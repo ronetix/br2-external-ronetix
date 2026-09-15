@@ -1,0 +1,36 @@
+From b702def236fa47ac3794140400b96bd94904dbc4 Mon Sep 17 00:00:00 2001
+From: Ilko Iliev <iliev@ronetix.at>
+Date: Mon, 14 Sep 2026 12:04:58 +0000
+Subject: [PATCH] sama5d3xcm.dtsi: change NAND ECC strength from 4 to 8 bits
+
+The PMECC engine on the SAMA5D3x CM module's NAND part needs 8-bit
+ECC correction, not the 4-bit default from the reference dtsi.
+
+This carries forward the Ronetix fix that used to be expressed as
+'atmel,pmecc-cap = <4>' -> '<8>' against the old Atmel-specific NAND
+DT bindings (kernel 4.9 / linux4sam_5.8). Since then the sama5d3xcm.dtsi
+node was converted to the generic NAND ECC bindings
+(nand-ecc-strength / nand-ecc-step-size), so the equivalent change is
+now against nand-ecc-strength instead of atmel,pmecc-cap.
+
+Signed-off-by: Ilko Iliev <iliev@ronetix.at>
+---
+ arch/arm/boot/dts/sama5d3xcm.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm/boot/dts/sama5d3xcm.dtsi b/arch/arm/boot/dts/sama5d3xcm.dtsi
+index 3843356..9709179 100644
+--- a/arch/arm/boot/dts/sama5d3xcm.dtsi
++++ b/arch/arm/boot/dts/sama5d3xcm.dtsi
+@@ -82,7 +82,7 @@ nand@3 {
+ 					reg = <0x3 0x0 0x2>;
+ 					atmel,rb = <0>;
+ 					nand-ecc-mode = "hw";
+-					nand-ecc-strength = <4>;
++					nand-ecc-strength = <8>;
+ 					nand-ecc-step-size = <512>;
+ 					nand-on-flash-bbt;
+ 					label = "atmel_nand";
+-- 
+2.43.0
+

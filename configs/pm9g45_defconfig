@@ -1,0 +1,55 @@
+# Architecture
+BR2_arm=y
+BR2_arm926t=y
+
+# Global patch dir: fixes for stock (non-Ronetix) packages that can't
+# be committed to the upstream linux4microchip/buildroot-mchp tree
+# from here. See board/ronetix/README.md's "Global patches" section.
+BR2_GLOBAL_PATCH_DIR="$(BR2_EXTERNAL_RONETIX_PATH)/global-patches"
+
+# Linux headers same as kernel, a 6.6 series
+BR2_PACKAGE_HOST_LINUX_HEADERS_CUSTOM_6_6=y
+
+# Kernel: pinned to a specific commit on the linux-6.6-mchp branch
+# (rather than the floating branch name) for build reproducibility --
+# this is the exact commit verified to build and boot on real pm9g45
+# hardware on 2026-09-14. To move forward, re-pin deliberately: check
+# out the branch, pick a new commit, verify a build, then update this
+# value -- don't just drop back to the bare branch name.
+BR2_LINUX_KERNEL=y
+BR2_LINUX_KERNEL_CUSTOM_GIT=y
+BR2_LINUX_KERNEL_CUSTOM_REPO_URL="https://github.com/linux4microchip/linux.git"
+BR2_LINUX_KERNEL_CUSTOM_REPO_VERSION="c5ee3b5209256990ae272d97b69103e3289f2190"
+BR2_LINUX_KERNEL_DEFCONFIG="at91_dt"
+BR2_LINUX_KERNEL_DTS_SUPPORT=y
+BR2_LINUX_KERNEL_INTREE_DTS_NAME="microchip/pm9g45"
+BR2_LINUX_KERNEL_PATCH="$(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/pm9g45/patches/linux/0001-dts-microchip-pm9g45.dts-modify-partition-table.patch $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/common/patches/linux/0001-scripts-unifdef-avoid-constexpr-keyword.patch $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/pm9g45/patches/linux/0002-dts-microchip-pm9g45.dts-fix-led0-gpio-add-usb-vbus.patch"
+
+# Filesystem
+BR2_TARGET_ROOTFS_UBIFS=y
+BR2_TARGET_ROOTFS_UBIFS_MAXLEBCNT=2047
+BR2_TARGET_ROOTFS_UBI=y
+
+# Bootloaders
+BR2_TARGET_AT91BOOTSTRAP3=y
+BR2_TARGET_AT91BOOTSTRAP3_CUSTOM_GIT=y
+BR2_TARGET_AT91BOOTSTRAP3_CUSTOM_REPO_URL="https://github.com/ronetix/at91bootstrap.git"
+BR2_TARGET_AT91BOOTSTRAP3_CUSTOM_REPO_VERSION="at91bootstrap-3.10.4_rnx"
+BR2_TARGET_AT91BOOTSTRAP3_DEFCONFIG="pm9g45_nf_uboot"
+
+# U-Boot: build on stock upstream (not the ronetix/u-boot fork) and
+# carry the fork's real delta as a patch queue instead. See
+# board/ronetix/README.md for why.
+#
+# Pinned to a specific commit on the u-boot-2024.07-mchp branch (rather
+# than the floating branch name) for build reproducibility -- the exact
+# commit verified to build and boot on real pm9g45 hardware on
+# 2026-09-14. Re-pin deliberately when moving forward, same as the
+# kernel above.
+BR2_TARGET_UBOOT=y
+BR2_TARGET_UBOOT_BUILD_SYSTEM_KCONFIG=y
+BR2_TARGET_UBOOT_CUSTOM_GIT=y
+BR2_TARGET_UBOOT_CUSTOM_REPO_URL="https://github.com/linux4sam/u-boot-at91.git"
+BR2_TARGET_UBOOT_CUSTOM_REPO_VERSION="ffe4012789d5742fdd96c0e238138b1e83e4f460"
+BR2_TARGET_UBOOT_BOARD_DEFCONFIG="pm9g45"
+BR2_TARGET_UBOOT_PATCH="$(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/pm9g45/patches/uboot/0001-configs-pm9g45_defconfig-modify-to-boot-Linux-kernel.patch"

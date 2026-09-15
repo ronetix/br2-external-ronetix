@@ -1,0 +1,29 @@
+From 078bc4f93bba33e6c0ba971e785bcfb2ab742e70 Mon Sep 17 00:00:00 2001
+From: Ilko Iliev <iliev@ronetix.at>
+Date: Fri, 3 Jan 2025 14:19:32 +0100
+Subject: [PATCH 1/3] configs/pm9g45_defconfig : modify to boot Linux kernel
+ 6.6 with RootFs UBIFS
+
+---
+ configs/pm9g45_defconfig | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/configs/pm9g45_defconfig b/configs/pm9g45_defconfig
+index 169673c649..250c25feb0 100644
+--- a/configs/pm9g45_defconfig
++++ b/configs/pm9g45_defconfig
+@@ -19,9 +19,9 @@ CONFIG_DEBUG_UART=y
+ CONFIG_NAND_BOOT=y
+ CONFIG_BOOTDELAY=3
+ CONFIG_USE_BOOTARGS=y
+-CONFIG_BOOTARGS="console=ttyS0,115200 mtdparts=atmel_nand:128k(bootstrap)ro,640k(uboot)ro,256k(env),256k(env_redundant),256k(spare),512k(dtb),8M(kernel)ro,-(rootfs) root=/dev/mtdblock7 rw rootfstype=jffs2"
++CONFIG_BOOTARGS="console=ttyS0,115200 rootfstype=ubifs ubi.mtd=6 root=ubi0:rootfs"
+ CONFIG_USE_BOOTCOMMAND=y
+-CONFIG_BOOTCOMMAND="nand read 0x70000000 0x180000 0x880000; nand read 0x70080000 0x200000 0x800000; bootz 0x70080000 - 0x70000000"
++CONFIG_BOOTCOMMAND="nand read 0x70000000 0x180000 0x80000; nand read 0x70080000 0x200000 0x600000; bootz 0x70080000 - 0x70000000"
+ CONFIG_SYS_CBSIZE=256
+ CONFIG_SYS_PBSIZE=281
+ CONFIG_SYS_CONSOLE_IS_IN_ENV=y
+-- 
+2.43.0
+

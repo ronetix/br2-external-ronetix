@@ -1,0 +1,53 @@
+# Architecture
+BR2_arm=y
+BR2_cortex_a5=y
+
+# Global patch dir: fixes for stock (non-Ronetix) packages that can't
+# be committed to the upstream linux4microchip/buildroot-mchp tree
+# from here. See board/ronetix/README.md's "Global patches" section.
+BR2_GLOBAL_PATCH_DIR="$(BR2_EXTERNAL_RONETIX_PATH)/global-patches"
+
+# Linux headers matching the kernel, 5.10 series
+BR2_PACKAGE_HOST_LINUX_HEADERS_CUSTOM_5_10=y
+
+# Kernel: stock linux4microchip/linux, tag linux4microchip-2021.10
+# (Linux 5.10.80) -- the same base linux4microchip/buildroot-mchp
+# uses for the SAMA5D3 family at the linux4microchip-2026.04 tag.
+BR2_LINUX_KERNEL=y
+BR2_LINUX_KERNEL_CUSTOM_TARBALL=y
+BR2_LINUX_KERNEL_CUSTOM_TARBALL_LOCATION="$(call github,linux4microchip,linux,linux4microchip-2021.10)/linux-linux4microchip-2021.10.tar.gz"
+BR2_LINUX_KERNEL_DEFCONFIG="sama5"
+BR2_LINUX_KERNEL_DTS_SUPPORT=y
+BR2_LINUX_KERNEL_INTREE_DTS_NAME="sama5d31ek sama5d33ek sama5d34ek sama5d35ek sama5d36ek"
+BR2_LINUX_KERNEL_NEEDS_HOST_OPENSSL=y
+BR2_LINUX_KERNEL_PATCH="$(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/sama5d3x-cm/patches/linux/0001-sama5d3xcm.dtsi-change-NAND-ECC-strength-from-4-to-8.patch $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/common/patches/linux/0001-scripts-unifdef-avoid-constexpr-keyword.patch $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/sama5d3x-cm/patches/linux/0002-sama5d3xmb_gmac.dtsi-use-rgmii-id-phy-mode-for-the-K.patch"
+
+# Filesystem
+BR2_TARGET_ROOTFS_UBIFS=y
+BR2_TARGET_ROOTFS_UBIFS_LEBSIZE=0x1f000
+BR2_TARGET_ROOTFS_UBI=y
+BR2_TARGET_ROOTFS_UBI_SUBSIZE=2048
+
+# AT91Bootstrap3: Ronetix fork used directly (per SoM bring-up, not a
+# patch queue -- see board/ronetix/README.md).
+BR2_TARGET_AT91BOOTSTRAP3=y
+BR2_TARGET_AT91BOOTSTRAP3_CUSTOM_GIT=y
+BR2_TARGET_AT91BOOTSTRAP3_CUSTOM_REPO_URL="https://github.com/ronetix/at91bootstrap.git"
+BR2_TARGET_AT91BOOTSTRAP3_CUSTOM_REPO_VERSION="at91bootstrap-3.10.4_rnx"
+# Real Ronetix board, contrib/board/ronetix/sama5d3x_cm/ (note: no
+# trailing "p" -- board/sama5d3x_cmp/ is a different, unrelated
+# upstream "CM Plus" board). Verified directly against the checked-out
+# branch. This defconfig already bakes in CONFIG_PMECC_CORRECT_BITS_8=y,
+# consistent with the 8-bit PMECC patches on the kernel/U-Boot side.
+BR2_TARGET_AT91BOOTSTRAP3_DEFCONFIG="sama5d3x_cm_nf_uboot"
+
+# U-Boot: build on stock upstream (not the ronetix/u-boot fork) and
+# carry the fork's real delta as a patch queue instead. See
+# board/ronetix/README.md for why.
+BR2_TARGET_UBOOT=y
+BR2_TARGET_UBOOT_BUILD_SYSTEM_KCONFIG=y
+BR2_TARGET_UBOOT_CUSTOM_GIT=y
+BR2_TARGET_UBOOT_CUSTOM_REPO_URL="https://github.com/linux4sam/u-boot-at91.git"
+BR2_TARGET_UBOOT_CUSTOM_REPO_VERSION="u-boot-2024.07-mchp"
+BR2_TARGET_UBOOT_BOARD_DEFCONFIG="sama5d3xek_nandflash"
+BR2_TARGET_UBOOT_PATCH="$(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/sama5d3x-cm/patches/uboot/0001-configs-sama5d3xek_nandflash_defconfig-change-NAND-E.patch $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/sama5d3x-cm/patches/uboot/0002-sama5d3xek_nandflash_defconfig-add-random-MAC-addres.patch $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/sama5d3x-cm/patches/uboot/0003-configs-sama5d3xek_nandflash_defconfig-select-UBI-s-.patch $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/sama5d3x-cm/patches/uboot/0004-arch-dts-sama5d3xcm.dtsi-use-rgmii-id-phy-mode-for-t.patch"

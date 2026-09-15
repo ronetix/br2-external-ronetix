@@ -1,0 +1,52 @@
+From 1c7f1091b3520de292e81373f5fd14f31bff383b Mon Sep 17 00:00:00 2001
+From: Ilko Iliev <iliev@ronetix.at>
+Date: Mon, 14 Sep 2026 13:17:57 +0000
+Subject: [PATCH] sama5d3xmb_gmac.dtsi: use rgmii-id phy-mode for the KSZ9131
+ GMAC PHY
+
+The stock Atmel reference motherboard dtsi sets phy-mode = "rgmii" on
+macb0 (GMAC) and relies on board-level RGMII clock-delay compensation
+tuned for the original Micrel KSZ9021 PHY, expressed as
+*-skew-ps device-tree properties on the ethernet-phy child nodes (those
+properties are specific to the KSZ9021 driver's own DT binding and are
+not read by the KSZ9131 driver at all -- confirmed by dmesg on real
+hardware: the KSZ9131 driver binds correctly via MDIO ID auto-detect,
+'PHY ... driver [Microchip KSZ9131 Gigabit PHY]', so the skew-ps
+properties are silently unused).
+
+On SAMA5D3X-CM, the Microchip KSZ9131 GMAC PHY (MDIO address 1, RC
+reset only, no dedicated reset GPIO) trains link fine as-is (dmesg:
+'Link is Up - 1Gbps/Full') but passes zero traffic in either direction
+(a DHCP client sends discovers, gets 0 replies, RX packets stays 0) --
+the classic symptom of a missing RGMII clock/data delay: autonegotiation
+survives a misaligned RGMII data path (it doesn't depend on it), but
+actual frame data does not.
+
+'rgmii-id' tells the MAC-side RGMII delay to be provided entirely by
+the PHY's own internal delay lines (both RX and TX), which is what the
+KSZ9131 driver's ksz9131_config_init() enables for this phy-mode value.
+This matches a board with no external PCB-level clock-delay
+compensation, which is the case here (RC-only reset, no other special
+Ethernet provisioning mentioned).
+
+Signed-off-by: Ilko Iliev <iliev@ronetix.at>
+---
+ arch/arm/boot/dts/sama5d3xmb_gmac.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm/boot/dts/sama5d3xmb_gmac.dtsi b/arch/arm/boot/dts/sama5d3xmb_gmac.dtsi
+index d750da3..36d2845 100644
+--- a/arch/arm/boot/dts/sama5d3xmb_gmac.dtsi
++++ b/arch/arm/boot/dts/sama5d3xmb_gmac.dtsi
+@@ -10,7 +10,7 @@ / {
+ 	ahb {
+ 		apb {
+ 			macb0: ethernet@f0028000 {
+-				phy-mode = "rgmii";
++				phy-mode = "rgmii-id";
+ 				#address-cells = <1>;
+ 				#size-cells = <0>;
+ 
+-- 
+2.43.0
+

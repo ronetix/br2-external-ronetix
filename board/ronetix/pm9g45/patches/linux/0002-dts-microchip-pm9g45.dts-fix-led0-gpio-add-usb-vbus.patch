@@ -1,0 +1,20 @@
+--- a/arch/arm/boot/dts/microchip/pm9g45.dts
++++ b/arch/arm/boot/dts/microchip/pm9g45.dts
+@@ -147,6 +147,8 @@
+ 		usb0: ohci@700000 {
+ 			status = "okay";
+ 			num-ports = <2>;
++			atmel,vbus-gpio = <&pioD 0 GPIO_ACTIVE_LOW
++					   &pioD 8 GPIO_ACTIVE_LOW>;
+ 		};
+ 
+ 		usb1: ehci@800000 {
+@@ -159,7 +161,7 @@
+ 
+ 		led0 {
+ 			label = "led0";
+-			gpios = <&pioD 0 GPIO_ACTIVE_LOW>;
++			gpios = <&pioD 30 GPIO_ACTIVE_LOW>;
+ 			linux,default-trigger = "nand-disk";
+ 		};
+ 

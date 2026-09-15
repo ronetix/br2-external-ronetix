@@ -1,0 +1,27 @@
+From f8af13abb3a7a0629245fc58a6c0f8e68a346226 Mon Sep 17 00:00:00 2001
+From: Ilko Iliev <iliev@ronetix.at>
+Date: Mon, 24 Feb 2025 10:09:13 +0100
+Subject: [PATCH 3/3] sama5d3xek_nandflash_defconfig - add random MAC address
+ and enable KSZ90x1 driver
+
+---
+ configs/sama5d3xek_nandflash_defconfig | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/configs/sama5d3xek_nandflash_defconfig b/configs/sama5d3xek_nandflash_defconfig
+index cf147a44bd..84614c7265 100644
+--- a/configs/sama5d3xek_nandflash_defconfig
++++ b/configs/sama5d3xek_nandflash_defconfig
+@@ -98,6 +98,9 @@ CONFIG_SYS_NAND_U_BOOT_OFFS=0x40000
+ CONFIG_DM_SPI_FLASH=y
+ CONFIG_SPI_FLASH_ATMEL=y
+ CONFIG_MACB=y
++CONFIG_NET_RANDOM_ETHADDR=y
++CONFIG_PHY_MICREL=y
++CONFIG_PHY_MICREL_KSZ90X1=y
+ CONFIG_PINCTRL=y
+ CONFIG_SPL_PINCTRL=y
+ CONFIG_PINCTRL_AT91=y
+-- 
+2.43.0
+

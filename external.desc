@@ -1,0 +1,3 @@
+name: RONETIX
+desc: Ronetix SAMA5D3X-CM, PM9G45 and SAM9X5-CM board support (patch-queue
+      on top of linux4microchip/buildroot-mchp)

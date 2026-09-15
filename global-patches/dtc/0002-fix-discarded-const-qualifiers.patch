@@ -1,0 +1,94 @@
+libfdt, fdtput: fix discarded const qualifiers with newer glibc
+
+Newer glibc (2.43+) declares type-generic overloads for memchr()/
+strrchr() and similar functions so that calling them with a `const
+char *` argument returns a `const`-qualified pointer, instead of
+always returning a plain (non-const) pointer as older glibc did. This
+is stricter and more correct, but it turns two pre-existing constness
+mismatches in dtc into hard errors under GCC (assignment discards
+'const' qualifier from pointer target type
+[-Werror=discarded-qualifiers]), since dtc builds with -Werror:
+
+  libfdt/fdt_overlay.c: In function 'overlay_fixup_phandle':
+  libfdt/fdt_overlay.c:424:21: error: assignment discards 'const'
+  qualifier from pointer target type [-Werror=discarded-qualifiers]
+          sep = memchr(fixup_str, ':', fixup_len);
+
+  fdtput.c: In function 'create_node':
+  fdtput.c:235:11: error: assignment discards 'const' qualifier from
+  pointer target type [-Werror=discarded-qualifiers]
+          p = strrchr(node_name, '/');
+
+In overlay_fixup_phandle(), `sep` is only ever read through, never
+written to, so it can simply become `const char *`.
+
+In create_node(), `p` is used to write into the string
+(`*p = '\0'`) even though the function's own `node_name` parameter is
+declared `const char *` — this already relied on the caller passing a
+mutable buffer under a const-qualified type, which the new glibc
+overloads no longer let slip through silently. Take an owned mutable
+copy with the existing xstrdup() helper and operate on that instead,
+freeing it on every return path.
+
+Backported from the fix already applied upstream in dtc v1.8.0
+(github.com/dgibson/dtc, issue #180), adapted to this dtc 1.7.2 tree
+(upstream's newer xstrndup()-based version isn't needed here; the
+existing xstrdup() helper in util.c/util.h covers this case).
+
+Signed-off-by: Ilko Iliev <ilko.iliev@gmail.com>
+
+--- a/libfdt/fdt_overlay.c	2026-09-14 11:10:06.865737440 +0000
++++ b/libfdt/fdt_overlay.c	2026-09-14 11:10:06.929895187 +0000
+@@ -409,7 +409,8 @@
+ 		const char *fixup_str = value;
+ 		uint32_t path_len, name_len;
+ 		uint32_t fixup_len;
+-		char *sep, *endptr;
++		const char *sep;
++		char *endptr;
+ 		int poffset, ret;
+ 
+ 		fixup_end = memchr(value, '\0', len);
+--- a/fdtput.c	2026-09-14 11:10:06.868223062 +0000
++++ b/fdtput.c	2026-09-14 11:10:06.930194635 +0000
+@@ -230,21 +230,24 @@
+ static int create_node(char **blob, const char *node_name)
+ {
+ 	int node = 0;
++	char *name = xstrdup(node_name);
+ 	char *p;
+ 
+-	p = strrchr(node_name, '/');
++	p = strrchr(name, '/');
+ 	if (!p) {
+ 		report_error(node_name, -1, -FDT_ERR_BADPATH);
++		free(name);
+ 		return -1;
+ 	}
+ 	*p = '\0';
+ 
+ 	*blob = realloc_node(*blob, p + 1);
+ 
+-	if (p > node_name) {
+-		node = fdt_path_offset(*blob, node_name);
++	if (p > name) {
++		node = fdt_path_offset(*blob, name);
+ 		if (node < 0) {
+-			report_error(node_name, -1, node);
++			report_error(name, -1, node);
++			free(name);
+ 			return -1;
+ 		}
+ 	}
+@@ -252,9 +255,11 @@
+ 	node = fdt_add_subnode(*blob, node, p + 1);
+ 	if (node < 0) {
+ 		report_error(p + 1, -1, node);
++		free(name);
+ 		return -1;
+ 	}
+ 
++	free(name);
+ 	return 0;
+ }
+ 

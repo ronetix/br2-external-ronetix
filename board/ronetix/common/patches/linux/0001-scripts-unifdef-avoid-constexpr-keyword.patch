@@ -1,0 +1,67 @@
+scripts/unifdef: avoid constexpr keyword
+
+Starting with C23, "constexpr" is a reserved keyword (like in C++),
+so it can no longer be used as an ordinary identifier. These
+linux4microchip/linux4sam kernels' scripts/unifdef.c (a host build
+tool, compiled with the host's own gcc, not the ARM cross toolchain)
+declares a variable named "constexpr", which GCC 15 rejects by
+default now that its default C standard is C23:
+
+    scripts/unifdef.c:206:1: error: 'constexpr' in empty declaration
+    scripts/unifdef.c: In function 'eval_unary':
+    scripts/unifdef.c:880:27: error: expected identifier or '(' before '=' token
+
+Rename the variable to "constexpression", matching the fix already
+applied upstream in mainline Linux (scripts/unifdef: avoid constexpr
+keyword, LKML March 2024) for the same reason.
+
+Shared by all three Ronetix boards in this tree (pm9g45, sama5d3x-cm,
+sam9x5-cm) -- their kernel trees all carry the same unmodified
+scripts/unifdef.c, so one patch covers all of them regardless of
+which kernel commit/tag each board is pinned to. See
+board/ronetix/README.md for which boards this applies to.
+
+Signed-off-by: Ilko Iliev <iliev@ronetix.at>
+
+--- a/scripts/unifdef.c	2026-09-14 10:04:26.578362247 +0000
++++ b/scripts/unifdef.c	2026-09-14 10:04:26.593850194 +0000
+@@ -203,7 +203,7 @@
+ static int              delcount;		/* count of deleted lines */
+ static unsigned         blankcount;		/* count of blank lines */
+ static unsigned         blankmax;		/* maximum recent blankcount */
+-static bool             constexpr;		/* constant #if expression */
++static bool             constexpression;		/* constant #if expression */
+ static bool             zerosyms = true;	/* to format symdepth output */
+ static bool             firstsym;		/* ditto */
+
+@@ -877,7 +877,7 @@
+ 		cp = skipcomment(cp);
+ 		if (defparen && *cp++ != ')')
+ 			return (LT_ERROR);
+-		constexpr = false;
++		constexpression = false;
+ 	} else if (!endsym(*cp)) {
+ 		debug("eval%d symbol", ops - eval_ops);
+ 		sym = findsym(cp);
+@@ -895,7 +895,7 @@
+ 			lt = *valp ? LT_TRUE : LT_FALSE;
+ 			cp = skipargs(cp);
+ 		}
+-		constexpr = false;
++		constexpression = false;
+ 	} else {
+ 		debug("eval%d bad expr", ops - eval_ops);
+ 		return (LT_ERROR);
+@@ -955,10 +955,10 @@
+ 	int val = 0;
+
+ 	debug("eval %s", *cpp);
+-	constexpr = killconsts ? false : true;
++	constexpression = killconsts ? false : true;
+ 	ret = eval_table(eval_ops, &val, cpp);
+ 	debug("eval = %d", val);
+-	return (constexpr ? LT_IF : ret == LT_ERROR ? LT_IF : ret);
++	return (constexpression ? LT_IF : ret == LT_ERROR ? LT_IF : ret);
+ }
+
+ /*

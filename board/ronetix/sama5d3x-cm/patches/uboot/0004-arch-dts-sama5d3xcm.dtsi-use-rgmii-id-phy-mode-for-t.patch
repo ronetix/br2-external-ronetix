@@ -1,0 +1,53 @@
+From 8943fed0d370e2aab1243d217696959cb89ef9e8 Mon Sep 17 00:00:00 2001
+From: Ilko Iliev <iliev@ronetix.at>
+Date: Mon, 14 Sep 2026 13:55:36 +0000
+Subject: [PATCH] arch: dts: sama5d3xcm.dtsi: use rgmii-id phy-mode for the
+ KSZ9131 GMAC PHY
+
+U-Boot vendors two parallel, independently-built device-tree sources
+for this board:
+
+  - dts/upstream/src/arm/microchip/  -- a newer tree kept in sync with
+    the Linux kernel's arch/arm/boot/dts layout, used only when
+    CONFIG_OF_UPSTREAM is selected.
+  - arch/arm/dts/                    -- an older, U-Boot-only tree with
+    its own board files (sama5d36ek.dts -> sama5d3xmb.dtsi ->
+    sama5d3xcm.dtsi), used when CONFIG_OF_UPSTREAM is *not* selected.
+
+sama5d3xek_nandflash_defconfig (CONFIG_DEFAULT_DEVICE_TREE="sama5d36ek")
+does not select CONFIG_OF_UPSTREAM, so it is the legacy arch/arm/dts/
+tree that actually gets compiled into the U-Boot binary -- confirmed by
+the presence of the .dtb/.cmd build artifacts under arch/arm/dts/ and
+their absence under dts/upstream/.
+
+This applies the identical, hardware-verified fix already carried on
+the kernel side (see the Linux kernel patch of the same name) to the
+KSZ9131 GMAC PHY on this board's macb0: the stock phy-mode = "rgmii"
+plus *-skew-ps properties are specific to the original KSZ9021 PHY
+binding and are not read by the KSZ9131 driver at all, which instead
+needs phy-mode = "rgmii-id" to enable its own internal RX+TX delay
+lines (this board has no external PCB delay compensation, RC-only PHY
+reset). Confirmed on real hardware: tftp at the U-Boot prompt now
+completes cleanly at link up, 1000Mbps full-duplex.
+
+Signed-off-by: Ilko Iliev <iliev@ronetix.at>
+---
+ arch/arm/dts/sama5d3xcm.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm/dts/sama5d3xcm.dtsi b/arch/arm/dts/sama5d3xcm.dtsi
+index d123057f30..8493a25be1 100644
+--- a/arch/arm/dts/sama5d3xcm.dtsi
++++ b/arch/arm/dts/sama5d3xcm.dtsi
+@@ -36,7 +36,7 @@
+ 			};
+ 
+ 			macb0: ethernet@f0028000 {
+-				phy-mode = "rgmii";
++				phy-mode = "rgmii-id";
+ 				#address-cells = <1>;
+ 				#size-cells = <0>;
+ 
+-- 
+2.43.0
+

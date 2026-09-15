@@ -1,0 +1,7 @@
+# This br2-external tree currently only carries board files and patch
+# queues (configs/, board/ronetix/) — it adds no extra packages, so
+# there is nothing to source here yet.
+#
+# If Ronetix packages are added later (out-of-tree kernel modules, apps,
+# etc.), add "source $BR2_EXTERNAL_RONETIX_PATH/package/<pkg>/Config.in"
+# lines here.

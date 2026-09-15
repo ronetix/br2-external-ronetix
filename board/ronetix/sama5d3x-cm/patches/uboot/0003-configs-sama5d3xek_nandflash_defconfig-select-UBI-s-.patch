@@ -1,0 +1,49 @@
+From 28d8b829ca9a2768ab3d35475e0882dfa3c340ba Mon Sep 17 00:00:00 2001
+From: Ilko Iliev <iliev@ronetix.at>
+Date: Mon, 14 Sep 2026 12:59:45 +0000
+Subject: [PATCH] configs/sama5d3xek_nandflash_defconfig: select UBI's rootfs
+ MTD by name
+
+The stock bootargs use 'ubi.mtd=6', a numeric MTD device index assuming
+the atmel_nand partitions (bootstrap/uboot/env_redundant/env/dtb/kernel/
+rootfs) occupy global mtd0..mtd6 in that order.
+
+On the SAMA5D3X-CM module, a SPI-NOR chip (the 'nor' node in
+sama5d3xcm.dtsi, an at25df321a) probes before the NAND controller and
+claims global mtd0, shifting every atmel_nand partition one slot up
+(bootstrap=mtd1 ... kernel=mtd6, rootfs=mtd7). With the numeric index,
+'ubi.mtd=6' then points at the *kernel* partition (raw, not
+UBI-formatted), so UBI fails to attach ('the layout volume was not
+found') and the rootfs never mounts:
+
+  ubi0 error: the layout volume was not found
+  ubi0 error: failed to attach mtd6, error -22
+  VFS: Cannot open root device "ubi0:rootfs"
+
+UBI's mtd= parameter accepts the partition *name* as well as a numeric
+index (see Documentation/admin-guide/ubifs.rst / drivers/mtd/ubi/build.c
+mtd_name matching). Using 'ubi.mtd=rootfs' selects the partition by its
+mtdparts label instead of a numeric slot, so it is correct regardless of
+how many other MTD devices probe ahead of atmel_nand.
+
+Signed-off-by: Ilko Iliev <iliev@ronetix.at>
+---
+ configs/sama5d3xek_nandflash_defconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/configs/sama5d3xek_nandflash_defconfig b/configs/sama5d3xek_nandflash_defconfig
+index 7fff396907..ea040698ae 100644
+--- a/configs/sama5d3xek_nandflash_defconfig
++++ b/configs/sama5d3xek_nandflash_defconfig
+@@ -33,7 +33,7 @@ CONFIG_FIT=y
+ CONFIG_NAND_BOOT=y
+ CONFIG_BOOTDELAY=3
+ CONFIG_USE_BOOTARGS=y
+-CONFIG_BOOTARGS="console=ttyS0,115200 earlyprintk mtdparts=atmel_nand:256k(bootstrap)ro,768k(uboot)ro,256K(env_redundant),256k(env),512k(dtb),6M(kernel)ro,-(rootfs) rootfstype=ubifs ubi.mtd=6 root=ubi0:rootfs"
++CONFIG_BOOTARGS="console=ttyS0,115200 earlyprintk mtdparts=atmel_nand:256k(bootstrap)ro,768k(uboot)ro,256K(env_redundant),256k(env),512k(dtb),6M(kernel)ro,-(rootfs) rootfstype=ubifs ubi.mtd=rootfs root=ubi0:rootfs"
+ CONFIG_USE_BOOTCOMMAND=y
+ CONFIG_BOOTCOMMAND="nand read 0x21000000 0x180000 0x80000;nand read 0x22000000 0x200000 0x600000;bootz 0x22000000 - 0x21000000"
+ CONFIG_SYS_CBSIZE=256
+-- 
+2.43.0
+
