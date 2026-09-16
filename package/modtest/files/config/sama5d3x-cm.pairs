@@ -26,7 +26,7 @@
 # GPIOs.
 
 # ---- J12 (HEADER 2x10, R26-R35) --------------------------------------------
-J12p1_PE24   gpiochip4  24   J12p2_PE25   gpiochip4  25   extbias=down
+J12p1_PE24   gpiochip4  24   J12p2_PE25   gpiochip4  25   extbias=up nodrive=A
 J12p3_PE29   gpiochip4  29   J12p4_PE30   gpiochip4  30   extbias=down
 J12p5_PC25   gpiochip2  25   J12p6_PE31   gpiochip4  31   extbias=down
 J12p7_PC23   gpiochip2  23   J12p8_PC24   gpiochip2  24   extbias=down

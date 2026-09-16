@@ -49,6 +49,17 @@
  * PB13/PD8 (J16 row 5) are excluded: PB13 is macb0's real eth0 RGMII
  * GRXER signal, which this hog would otherwise claim before macb0 can
  * probe.
+ *
+ * PE24/PE25 (J12 row 1) are pull-UP, not pull-down like the rest of
+ * this group: PE25 is schematic-labeled RXD2/1-Wire, and the board's
+ * own pull-up resistor for that net turned out not to be populated on
+ * every unit (confirmed on real hardware: a unit with no resistor
+ * read PE24 stuck low). A weak internal pull-up reinforces a real
+ * external pull-up when one is present (both push the same direction,
+ * no contention) and provides a defined rest state on its own when
+ * one is not -- unlike this group's pull-down, which would fight a
+ * real pull-up outright. See sama5d3x-cm.pairs' extbias=up on this
+ * row.
  */
 &pinctrl {
 	pinctrl-names = "default";
@@ -58,8 +69,8 @@
 	pinctrl_modtest_pulldown: modtest_pulldown {
 		atmel,pins =
 			<
-								AT91_PIOE 24 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p1_PE24 */
-								AT91_PIOE 25 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p2_PE25 */
+								AT91_PIOE 24 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p1_PE24 */
+								AT91_PIOE 25 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p2_PE25 */
 								AT91_PIOE 29 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p3_PE29 */
 								AT91_PIOE 30 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p4_PE30 */
 								AT91_PIOC 25 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p5_PC25 */
