@@ -224,12 +224,17 @@ static int add_pin(const char *label, const char *chip, unsigned int offset)
  * Pin map format, one loopback pair per line:
  *
  *   # comment
- *   LABEL_A  chip  offset   LABEL_B  chip  offset  [flags...]
+ *   LABEL_A  chip  offset   LABEL_B  chip  offset  [flags...]  [# comment]
  *   CN1_12   gpiochip0 35   CN1_14   gpiochip0 36
  *   CN1_20   gpiochip0 40   CN1_22   gpiochip0 41   extbias         (= extbias=up)
  *   CN1_30   gpiochip0 50   CN1_32   gpiochip0 51   extbias=down
  *   CN1_40   gpiochip1  6   CN1_42   gpiochip1   7   extbias=down settle=1000000
  *   CN1_50   gpiochip1  8   CN1_52   gpiochip1   9   intbias=down
+ *   CN1_60   gpiochip1 10   CN1_62   gpiochip1  11   extbias=up    # 1-Wire, board X only
+ *
+ * A '#' anywhere after the required fields starts a trailing comment
+ * that runs to the end of the line, same as a '#' as the first
+ * non-blank character starts a whole-line comment.
  *
  * Trailing flags, any number, any order, space separated:
  *
@@ -332,6 +337,9 @@ static int load_pinmap(const char *path)
 
 		for (tok = strtok_r(p + consumed, " \t\r\n", &saveptr); tok;
 		     tok = strtok_r(NULL, " \t\r\n", &saveptr)) {
+			if (tok[0] == '#') {
+				break;	/* rest of the line is a comment */
+			}
 			if (strcmp(tok, "extbias") == 0 || strcmp(tok, "extbias=up") == 0) {
 				eb = EXTB_UP;
 				req_bias = 0;
@@ -478,9 +486,6 @@ static int set_all_input(void)
 static void mark_fail(int idx)
 {
 	pins[idx].failed = 1;
-	if (pins[idx].partner >= 0) {
-		pins[pins[idx].partner].failed = 1;
-	}
 }
 
 /*
@@ -525,6 +530,49 @@ static void wait_for_release_settle(int j)
 	if (remaining > 0) {
 		usleep((useconds_t)remaining);
 	}
+}
+
+/*
+ * Check every biased pin's own resting level once, before any drive/compare
+ * sweep starts - so a pin that cannot hold its declared resting level (no
+ * effective pull, or a latched auto-direction translator) is known bad
+ * from the very start and never used as a comparison reference, regardless
+ * of where it sits in the pin map. Without this, such a pin is only
+ * caught once ITS OWN turn as driver comes up in phase_drive(), so
+ * whatever was checked against it earlier in the sweep sees a false
+ * short (see opt_precharge_us above) and, worse, has its own otherwise
+ * fine pair reported as failed too.
+ */
+static int precheck_resting_bias(void)
+{
+	int i, found = 0;
+
+	for (i = 0; i < npins; i++) {
+		int expect, v;
+
+		if (pins[i].ext_bias == EXTB_NONE) {
+			continue;
+		}
+
+		expect = pins[i].ext_bias == EXTB_UP ? 1 : 0;
+		v = gt_line_get(pins[i].line);
+		if (v < 0) {
+			fprintf(stderr, "cannot read %s: %s\n",
+				pins[i].label, strerror(errno));
+			return -1;
+		}
+		if (v != expect) {
+			printf("%sFAIL%s   %-*s stuck-at=%d before any drive "
+			       "(expected %d - no effective pull-%s? "
+			       "translator latched?)\n",
+			       col(C_RED), col(C_RST),
+			       use_color ? 18 : 0, pins[i].label, v, expect,
+			       expect ? "up" : "down");
+			mark_fail(i);
+			found++;
+		}
+	}
+	return found;
 }
 
 static int phase_drive(int level)
@@ -593,6 +641,19 @@ static int phase_drive(int level)
 				continue;
 			}
 
+			/*
+			 * A pin already known bad (its own open/short/stuck-at
+			 * check already failed, on this or an earlier turn) is
+			 * not a meaningful reference: comparing i against a
+			 * pin that is itself stuck would blame i (and taint
+			 * i's own, otherwise-fine pair) for a problem that is
+			 * really j's alone. Skip it rather than let one bad
+			 * pin cascade into failing every pair in the sweep.
+			 */
+			if (pins[j].failed) {
+				continue;
+			}
+
 			wait_for_release_settle(j);
 
 			v = gt_line_get(pins[j].line);
@@ -613,7 +674,10 @@ static int phase_drive(int level)
 					printf("%sFAIL%s   %-*s open partner=%s phase=%s\n",
 					       col(C_RED), col(C_RST),
 					       lw, pins[i].label, pins[j].label, pname);
+					/* both ends of a real open are this
+					 * pair's own fault */
 					mark_fail(i);
+					mark_fail(j);
 					fails++;
 				} else if (opt_verbose) {
 					printf("%sOK%s     %-*s -> %-*s phase=%s\n",
@@ -821,6 +885,12 @@ int main(int argc, char **argv)
 		release_all();
 		return 2;
 	}
+
+	rc = precheck_resting_bias();
+	if (rc < 0) {
+		goto err;
+	}
+	fails += rc;
 
 	rc = phase_drive(1);
 	if (rc < 0) {
