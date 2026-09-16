@@ -8,7 +8,11 @@ LOG=/var/log/modtest.log
 case "$1" in
 	start)
 		echo "Running modtest, see $LOG"
-		/usr/bin/modtest 2>&1 | tee "$LOG"
+		# modtest.sh auto-detects color from "is stdout a real tty",
+		# which is false once piped through tee below -- force it on
+		# so the console still gets the colorized PASS/FAIL output
+		# (this also lands in $LOG, ANSI codes and all).
+		MODTEST_COLOR=always /usr/bin/modtest 2>&1 | tee "$LOG"
 		;;
 	stop|restart|reload)
 		;;
