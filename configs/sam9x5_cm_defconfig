@@ -67,3 +67,8 @@ BR2_TARGET_UBOOT_PATCH="$(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/sam9x5-cm/pat
 # Host tools: SAM-BA, for initial/recovery flashing over the SoM's
 # USB device port (see the Ronetix wiki's SAM9X5-CM page).
 BR2_PACKAGE_HOST_SAM_BA=y
+
+# Production test tool (GPIO loopback pair test + functional checks).
+# See board/ronetix/README.md's "modtest" section.
+BR2_PACKAGE_MODTEST=y
+BR2_PACKAGE_MODTEST_SAM9X5_CM=y

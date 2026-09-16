@@ -1,3 +1,25 @@
+# sama5d3x-cm production test image.
+#
+# Everything here is identical to sama5d3x_cm_defconfig (the real
+# production image) EXCEPT: this one boots a test-only device tree
+# (board/ronetix/sama5d3x-cm/dts/sama5d35ek-modtest.dts) that disables
+# the peripherals this carrier doesn't actually populate (second RJ45,
+# SD card slot, an I2C1 device) so their pins can be exercised as plain
+# GPIOs, and it includes modtest (the GPIO loopback + functional-check
+# production test tool). See board/ronetix/README.md's "modtest"
+# section for the full story, including why this needed a separate
+# test-only dts rather than patching the production one: the affected
+# peripherals are enabled and functioning correctly in the real
+# production image (matching real, if empty, eval-kit-derived
+# defaults) -- disabling them there would be a regression for anyone
+# who actually does wire up a second RJ45/SD slot/I2C1 device to this
+# carrier's headers later, not a fix.
+#
+# Keep this file's production-relevant settings (architecture, kernel/
+# U-Boot/AT91Bootstrap3 pins and patches, filesystem) in sync with
+# sama5d3x_cm_defconfig by hand -- there is no automatic mechanism
+# tying the two together.
+
 # Architecture
 BR2_arm=y
 BR2_cortex_a5=y
@@ -10,15 +32,17 @@ BR2_GLOBAL_PATCH_DIR="$(BR2_EXTERNAL_RONETIX_PATH)/global-patches"
 # Linux headers matching the kernel, 5.10 series
 BR2_PACKAGE_HOST_LINUX_HEADERS_CUSTOM_5_10=y
 
-# Kernel: stock linux4microchip/linux, tag linux4microchip-2021.10
-# (Linux 5.10.80) -- the same base linux4microchip/buildroot-mchp
-# uses for the SAMA5D3 family at the linux4microchip-2026.04 tag.
+# Kernel: same source/patches as sama5d3x_cm_defconfig, but boots the
+# test-only sama5d35ek-modtest.dts (see file header comment) instead of
+# any of the stock in-tree dtbs -- BR2_LINUX_KERNEL_INTREE_DTS_NAME is
+# deliberately left unset so only the test dtb is built, avoiding any
+# ambiguity about which .dtb to flash on this image.
 BR2_LINUX_KERNEL=y
 BR2_LINUX_KERNEL_CUSTOM_TARBALL=y
 BR2_LINUX_KERNEL_CUSTOM_TARBALL_LOCATION="$(call github,linux4microchip,linux,linux4microchip-2021.10)/linux-linux4microchip-2021.10.tar.gz"
 BR2_LINUX_KERNEL_DEFCONFIG="sama5"
 BR2_LINUX_KERNEL_DTS_SUPPORT=y
-BR2_LINUX_KERNEL_INTREE_DTS_NAME="sama5d31ek sama5d33ek sama5d34ek sama5d35ek sama5d36ek"
+BR2_LINUX_KERNEL_CUSTOM_DTS_PATH="$(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/sama5d3x-cm/dts/sama5d35ek-modtest.dts"
 BR2_LINUX_KERNEL_NEEDS_HOST_OPENSSL=y
 BR2_LINUX_KERNEL_PATCH="$(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/sama5d3x-cm/patches/linux/0001-sama5d3xcm.dtsi-change-NAND-ECC-strength-from-4-to-8.patch $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/common/patches/linux/0001-scripts-unifdef-avoid-constexpr-keyword.patch $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/sama5d3x-cm/patches/linux/0002-sama5d3xmb_gmac.dtsi-use-rgmii-id-phy-mode-for-the-K.patch"
 
@@ -34,16 +58,9 @@ BR2_TARGET_AT91BOOTSTRAP3=y
 BR2_TARGET_AT91BOOTSTRAP3_CUSTOM_GIT=y
 BR2_TARGET_AT91BOOTSTRAP3_CUSTOM_REPO_URL="https://github.com/ronetix/at91bootstrap.git"
 BR2_TARGET_AT91BOOTSTRAP3_CUSTOM_REPO_VERSION="at91bootstrap-3.10.4_rnx"
-# Real Ronetix board, contrib/board/ronetix/sama5d3x_cm/ (note: no
-# trailing "p" -- board/sama5d3x_cmp/ is a different, unrelated
-# upstream "CM Plus" board). Verified directly against the checked-out
-# branch. This defconfig already bakes in CONFIG_PMECC_CORRECT_BITS_8=y,
-# consistent with the 8-bit PMECC patches on the kernel/U-Boot side.
 BR2_TARGET_AT91BOOTSTRAP3_DEFCONFIG="sama5d3x_cm_nf_uboot"
 
-# U-Boot: build on stock upstream (not the ronetix/u-boot fork) and
-# carry the fork's real delta as a patch queue instead. See
-# board/ronetix/README.md for why.
+# U-Boot: same as sama5d3x_cm_defconfig.
 BR2_TARGET_UBOOT=y
 BR2_TARGET_UBOOT_BUILD_SYSTEM_KCONFIG=y
 BR2_TARGET_UBOOT_CUSTOM_GIT=y
@@ -58,7 +75,11 @@ BR2_PACKAGE_HOST_SAM_BA=y
 
 # Bring up eth0 via DHCP automatically at boot (generates the
 # /etc/network/interfaces "auto eth0 / iface eth0 inet dhcp" stanza),
-# instead of leaving it unconfigured until something (e.g. modtest, or
-# a manual udhcpc) brings it up on demand.
+# so it has a head start on link/DHCP before modtest's own eth check
+# runs, instead of only coming up on demand.
 BR2_SYSTEM_DHCP="eth0"
 
+# Production test tool (GPIO loopback pair test + functional checks).
+# See board/ronetix/README.md's "modtest" section.
+BR2_PACKAGE_MODTEST=y
+BR2_PACKAGE_MODTEST_SAMA5D3X_CM=y

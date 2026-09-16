@@ -53,3 +53,8 @@ BR2_TARGET_UBOOT_CUSTOM_REPO_URL="https://github.com/linux4sam/u-boot-at91.git"
 BR2_TARGET_UBOOT_CUSTOM_REPO_VERSION="ffe4012789d5742fdd96c0e238138b1e83e4f460"
 BR2_TARGET_UBOOT_BOARD_DEFCONFIG="pm9g45"
 BR2_TARGET_UBOOT_PATCH="$(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/pm9g45/patches/uboot/0001-configs-pm9g45_defconfig-modify-to-boot-Linux-kernel.patch"
+
+# Production test tool (GPIO loopback pair test + functional checks).
+# See board/ronetix/README.md's "modtest" section.
+BR2_PACKAGE_MODTEST=y
+BR2_PACKAGE_MODTEST_PM9G45=y

@@ -1,0 +1,90 @@
+# GPIO loopback pin map for the SAMA5-CARRIER test carrier
+# (SAMA5-CARRIER_Schematic.PDF, sheet 6 "IO", connectors J12-J17), paired
+# with a shorting jig that connects each header's pin1-pin2, pin3-pin4,
+# pin5-pin6, ... (i.e. each row of the 2xN header together).
+#
+# Use only with sama5d3x_cm_test_defconfig (which boots
+# board/ronetix/sama5d3x-cm/dts/sama5d35ek-modtest.dts), not
+# sama5d3x_cm_defconfig.
+#
+# Format:
+#   LABEL_A       chip        offset   LABEL_B       chip        offset   [flags]
+#
+# Labels: J<connector>p<pin>_<port><n>, e.g. J12p1_PE24 = J12 physical pin 1,
+# SoC signal PE24.
+#
+# chip/offset: PA -> gpiochip0, PB -> gpiochip1, PC -> gpiochip2,
+# PD -> gpiochip3, PE -> gpiochip4, offset = the number after the port
+# letter (e.g. PE24 = gpiochip4 offset 24).
+#
+# extbias=down: sama5d35ek-modtest.dts configures every pin below with a
+# pinctrl pull-down hog, so this tells gpiotest about that existing pull
+# instead of asking it to request one itself (see gpiotest.c's own
+# extbias=/intbias= documentation).
+#
+# Rows commented out are excluded: real hardware functions, not free
+# GPIOs.
+
+# ---- J12 (HEADER 2x10, R26-R35) --------------------------------------------
+J12p1_PE24   gpiochip4  24   J12p2_PE25   gpiochip4  25   extbias=down
+J12p3_PE29   gpiochip4  29   J12p4_PE30   gpiochip4  30   extbias=down
+J12p5_PC25   gpiochip2  25   J12p6_PE31   gpiochip4  31   extbias=down
+J12p7_PC23   gpiochip2  23   J12p8_PC24   gpiochip2  24   extbias=down
+J12p9_PC21   gpiochip2  21   J12p10_PC22  gpiochip2  22   extbias=down
+J12p11_PC18  gpiochip2  18   J12p12_PC20  gpiochip2  20   extbias=down
+J12p13_PC16  gpiochip2  16   J12p14_PC19  gpiochip2  19   extbias=down
+J12p15_PC8   gpiochip2  8    J12p16_PC17  gpiochip2  17   extbias=down
+J12p17_PC6   gpiochip2  6    J12p18_PC9   gpiochip2  9   extbias=down
+J12p19_PC4   gpiochip2  4    J12p20_PC7   gpiochip2  7   extbias=down
+
+# ---- J13 (HEADER 2x10, R36-R45) --------------------------------------------
+J13p1_PC2    gpiochip2  2    J13p2_PC5    gpiochip2  5   extbias=down
+J13p3_PC0    gpiochip2  0    J13p4_PC3    gpiochip2  3   extbias=down
+J13p5_PE27   gpiochip4  27   J13p6_PC1    gpiochip2  1   extbias=down
+J13p7_PC10   gpiochip2  10   J13p8_PE28   gpiochip4  28   extbias=down
+J13p9_PC12   gpiochip2  12   J13p10_PC11  gpiochip2  11   extbias=down
+J13p11_PC14  gpiochip2  14   J13p12_PC13  gpiochip2  13   extbias=down
+J13p13_PC27  gpiochip2  27   J13p14_PC15  gpiochip2  15   extbias=down
+J13p15_PC29  gpiochip2  29   J13p16_PC26  gpiochip2  26   extbias=down
+J13p17_PC31  gpiochip2  31   J13p18_PC28  gpiochip2  28   extbias=down
+J13p19_PA0   gpiochip0  0    J13p20_PC30  gpiochip2  30   extbias=down
+
+# ---- J14 (HEADER 2x10, R46-R55) --------------------------------------------
+J14p1_PA2    gpiochip0  2    J14p2_PA1    gpiochip0  1   extbias=down
+J14p3_PA5    gpiochip0  5    J14p4_PA3    gpiochip0  3   extbias=down
+J14p5_PA7    gpiochip0  7    J14p6_PA4    gpiochip0  4   extbias=down
+J14p7_PA9    gpiochip0  9    J14p8_PA6    gpiochip0  6   extbias=down
+J14p9_PA11   gpiochip0  11   J14p10_PA8   gpiochip0  8   extbias=down
+J14p11_PA12  gpiochip0  12   J14p12_PA10  gpiochip0  10   extbias=down
+J14p13_PA14  gpiochip0  14   J14p14_PA13  gpiochip0  13   extbias=down
+J14p15_PA16  gpiochip0  16   J14p16_PA15  gpiochip0  15   extbias=down
+J14p17_PA18  gpiochip0  18   J14p18_PA17  gpiochip0  17   extbias=down
+J14p19_PA21  gpiochip0  21   J14p20_PA19  gpiochip0  19   extbias=down
+
+# ---- J15 (HEADER 2x10, R56-R65) --------------------------------------------
+J15p1_PA23   gpiochip0  23   J15p2_PA20   gpiochip0  20   extbias=down
+J15p3_PA25   gpiochip0  25   J15p4_PA22   gpiochip0  22   extbias=down
+J15p5_PA27   gpiochip0  27   J15p6_PA24   gpiochip0  24   extbias=down
+J15p7_PA28   gpiochip0  28   J15p8_PA26   gpiochip0  26   extbias=down
+J15p9_PA30   gpiochip0  30   J15p10_PA29  gpiochip0  29   extbias=down
+J15p11_PD30  gpiochip3  30   J15p12_PA31  gpiochip0  31   extbias=down
+J15p13_PD28  gpiochip3  28   J15p14_PD31  gpiochip3  31   extbias=down
+J15p15_PD26  gpiochip3  26   J15p16_PD27  gpiochip3  27   extbias=down
+J15p17_PD16  gpiochip3  16   J15p18_PD25  gpiochip3  25   extbias=down
+J15p19_PD14  gpiochip3  14   J15p20_PD23  gpiochip3  23   extbias=down
+
+# ---- J16 (HEADER 2x10, R66-R75) --------------------------------------------
+J16p1_PD24   gpiochip3  24   J16p2_PD21   gpiochip3  21   extbias=down
+J16p3_PD22   gpiochip3  22   J16p4_PD19   gpiochip3  19   extbias=down
+J16p5_PD20   gpiochip3  20   J16p6_PD15   gpiochip3  15   extbias=down
+J16p7_PD18   gpiochip3  18   J16p8_PD7    gpiochip3  7   extbias=down
+# J16p9_PD8    gpiochip3  8    J16p10_PB13  gpiochip1  13   # excluded: PB13 is real eth0 (macb0 RGMII GRXER)
+J16p11_PD6   gpiochip3  6    J16p12_PB15  gpiochip1  15   extbias=down
+J16p13_PD5   gpiochip3  5    J16p14_PB20  gpiochip1  20   extbias=down
+J16p15_PB14  gpiochip1  14   J16p16_PB22  gpiochip1  22   extbias=down
+J16p17_PB19  gpiochip1  19   J16p18_PB27  gpiochip1  27   extbias=down
+J16p19_PB21  gpiochip1  21   J17p4_PB26   gpiochip1  26   extbias=down
+
+# ---- J17 (HEADER 2x2, R76-R77) ---------------------------------------------
+J17p1_PB23   gpiochip1  23   J17p2_PB28   gpiochip1  28   extbias=down
+J17p3_PB24   gpiochip1  24   J16p20_PB29  gpiochip1  29   extbias=down

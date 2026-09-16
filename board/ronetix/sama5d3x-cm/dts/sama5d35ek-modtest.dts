@@ -1,0 +1,271 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * sama5d35ek-modtest.dts - Ronetix SAMA5D3x-CM + SAMA5-CARRIER
+ * production test device tree.
+ *
+ * This board has no Ronetix-specific dts upstream, so the production
+ * kernel (sama5d3x_cm_defconfig) builds and boots the stock upstream
+ * sama5d35ek.dts, which assumes the full Atmel SAMA5D35-EK eval-kit
+ * hardware exists. That's fine for production, but it leaves several
+ * pins multiplexed to peripherals this carrier doesn't have, held by
+ * kernel drivers instead of available as plain GPIOs for modtest's
+ * gpiotest loopback test.
+ *
+ * Rather than build stock sama5d35ek.dts, this is a fresh top-level
+ * dts: it pulls in the same shared dtsi fragments, replicates only the
+ * "okay" overrides for peripherals this carrier genuinely has, and
+ * deliberately does not replicate stock sama5d35ek.dts's own board
+ * body, so its eval-kit-only nodes never exist here at all.
+ *
+ * NOT used by the production sama5d3x_cm_defconfig -- that one still
+ * boots stock sama5d35ek.dts unmodified. This file is only pulled in
+ * by sama5d3x_cm_test_defconfig via BR2_LINUX_KERNEL_CUSTOM_DTS_PATH,
+ * for the modtest production-test image.
+ */
+/dts-v1/;
+#include "sama5d35.dtsi"
+#include "sama5d3xmb.dtsi"
+#include "sama5d3xmb_emac.dtsi"
+#include "sama5d3xmb_gmac.dtsi"
+#include <dt-bindings/pinctrl/at91.h>
+
+/*
+ * This carrier has no board pull-up/pull-down resistors on any of the
+ * modtest loopback pins, so each one is configured here as plain GPIO
+ * with an actively enabled pull-down, applied at boot via the pin
+ * controller's own "hog" mechanism (pinctrl_claim_hogs() in
+ * drivers/pinctrl/core.c): any pinctrl controller node's own "default"
+ * pinctrl-0/pinctrl-names state is auto-applied at registration, no
+ * owning consumer device needed.
+ *
+ * This group must be nested two levels below &pinctrl (a "function"
+ * node containing the actual "group" node, matching every real group
+ * in this dtsi chain, e.g. dbgu/dbgu-0, board/sensor_reset-0) rather
+ * than a direct child of &pinctrl -- otherwise pinctrl-at91.c's hog
+ * resolution can't find it by name and the whole pinctrl driver probe
+ * fails, taking the console down with it. Reusing the existing "board"
+ * function node merges cleanly by path.
+ *
+ * PB13/PD8 (J16 row 5) are excluded: PB13 is macb0's real eth0 RGMII
+ * GRXER signal, which this hog would otherwise claim before macb0 can
+ * probe.
+ */
+&pinctrl {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_modtest_pulldown>;
+
+	board {
+	pinctrl_modtest_pulldown: modtest_pulldown {
+		atmel,pins =
+			<
+								AT91_PIOE 24 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p1_PE24 */
+								AT91_PIOE 25 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p2_PE25 */
+								AT91_PIOE 29 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p3_PE29 */
+								AT91_PIOE 30 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p4_PE30 */
+								AT91_PIOC 25 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p5_PC25 */
+								AT91_PIOE 31 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p6_PE31 */
+								AT91_PIOC 23 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p7_PC23 */
+								AT91_PIOC 24 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p8_PC24 */
+								AT91_PIOC 21 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p9_PC21 */
+								AT91_PIOC 22 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p10_PC22 */
+								AT91_PIOC 18 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p11_PC18 */
+								AT91_PIOC 20 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p12_PC20 */
+								AT91_PIOC 16 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p13_PC16 */
+								AT91_PIOC 19 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p14_PC19 */
+								AT91_PIOC 8 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p15_PC8 */
+								AT91_PIOC 17 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p16_PC17 */
+								AT91_PIOC 6 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p17_PC6 */
+								AT91_PIOC 9 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p18_PC9 */
+								AT91_PIOC 4 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p19_PC4 */
+								AT91_PIOC 7 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J12p20_PC7 */
+								AT91_PIOC 2 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p1_PC2 */
+								AT91_PIOC 5 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p2_PC5 */
+								AT91_PIOC 0 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p3_PC0 */
+								AT91_PIOC 3 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p4_PC3 */
+								AT91_PIOE 27 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p5_PE27 */
+								AT91_PIOC 1 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p6_PC1 */
+								AT91_PIOC 10 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p7_PC10 */
+								AT91_PIOE 28 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p8_PE28 */
+								AT91_PIOC 12 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p9_PC12 */
+								AT91_PIOC 11 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p10_PC11 */
+								AT91_PIOC 14 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p11_PC14 */
+								AT91_PIOC 13 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p12_PC13 */
+								AT91_PIOC 27 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p13_PC27 */
+								AT91_PIOC 15 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p14_PC15 */
+								AT91_PIOC 29 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p15_PC29 */
+								AT91_PIOC 26 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p16_PC26 */
+								AT91_PIOC 31 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p17_PC31 */
+								AT91_PIOC 28 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p18_PC28 */
+								AT91_PIOA 0 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p19_PA0 */
+								AT91_PIOC 30 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J13p20_PC30 */
+								AT91_PIOA 2 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p1_PA2 */
+								AT91_PIOA 1 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p2_PA1 */
+								AT91_PIOA 5 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p3_PA5 */
+								AT91_PIOA 3 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p4_PA3 */
+								AT91_PIOA 7 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p5_PA7 */
+								AT91_PIOA 4 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p6_PA4 */
+								AT91_PIOA 9 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p7_PA9 */
+								AT91_PIOA 6 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p8_PA6 */
+								AT91_PIOA 11 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p9_PA11 */
+								AT91_PIOA 8 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p10_PA8 */
+								AT91_PIOA 12 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p11_PA12 */
+								AT91_PIOA 10 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p12_PA10 */
+								AT91_PIOA 14 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p13_PA14 */
+								AT91_PIOA 13 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p14_PA13 */
+								AT91_PIOA 16 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p15_PA16 */
+								AT91_PIOA 15 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p16_PA15 */
+								AT91_PIOA 18 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p17_PA18 */
+								AT91_PIOA 17 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p18_PA17 */
+								AT91_PIOA 21 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p19_PA21 */
+								AT91_PIOA 19 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J14p20_PA19 */
+								AT91_PIOA 23 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p1_PA23 */
+								AT91_PIOA 20 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p2_PA20 */
+								AT91_PIOA 25 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p3_PA25 */
+								AT91_PIOA 22 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p4_PA22 */
+								AT91_PIOA 27 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p5_PA27 */
+								AT91_PIOA 24 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p6_PA24 */
+								AT91_PIOA 28 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p7_PA28 */
+								AT91_PIOA 26 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p8_PA26 */
+								AT91_PIOA 30 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p9_PA30 */
+								AT91_PIOA 29 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p10_PA29 */
+								AT91_PIOD 30 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p11_PD30 */
+								AT91_PIOA 31 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p12_PA31 */
+								AT91_PIOD 28 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p13_PD28 */
+								AT91_PIOD 31 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p14_PD31 */
+								AT91_PIOD 26 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p15_PD26 */
+								AT91_PIOD 27 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p16_PD27 */
+								AT91_PIOD 16 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p17_PD16 */
+								AT91_PIOD 25 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p18_PD25 */
+								AT91_PIOD 14 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p19_PD14 */
+								AT91_PIOD 23 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J15p20_PD23 */
+								AT91_PIOD 24 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J16p1_PD24 */
+								AT91_PIOD 21 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J16p2_PD21 */
+								AT91_PIOD 22 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J16p3_PD22 */
+								AT91_PIOD 19 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J16p4_PD19 */
+								AT91_PIOD 20 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J16p5_PD20 */
+								AT91_PIOD 15 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J16p6_PD15 */
+								AT91_PIOD 18 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J16p7_PD18 */
+								AT91_PIOD 7 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J16p8_PD7 */
+								AT91_PIOD 6 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J16p11_PD6 */
+								AT91_PIOB 15 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J16p12_PB15 */
+								AT91_PIOD 5 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J16p13_PD5 */
+								AT91_PIOB 20 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J16p14_PB20 */
+								AT91_PIOB 14 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J16p15_PB14 */
+								AT91_PIOB 22 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J16p16_PB22 */
+								AT91_PIOB 19 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J16p17_PB19 */
+								AT91_PIOB 27 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J16p18_PB27 */
+								AT91_PIOB 21 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J16p19_PB21 */
+								AT91_PIOB 29 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J16p20_PB29 */
+								AT91_PIOB 23 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J17p1_PB23 */
+								AT91_PIOB 28 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J17p2_PB28 */
+								AT91_PIOB 24 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN	/* J17p3_PB24 */
+								AT91_PIOB 26 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_DOWN>;	/* J17p4_PB26 */
+	};
+	};
+};
+
+/*
+ * USB-B and USB-C on the SAMA5-CARRIER are fixed-wired as host ports
+ * with VBUS fixed enabled in hardware -- no GPIO controls VBUS,
+ * unlike the eval-kit design sama5d3xmb.dtsi assumes (atmel,vbus-gpio
+ * on usb1's three OHCI ports, PD25-27, and usb0's UDC, PD29). Deleting
+ * that property frees PD25-27 for the loopback test.
+ */
+&usb0 {
+	/delete-property/ atmel,vbus-gpio;
+};
+
+&usb1 {
+	/delete-property/ atmel,vbus-gpio;
+};
+
+/ {
+	model = "Ronetix SAMA5D3x-CM on SAMA5-CARRIER (production test)";
+	compatible = "atmel,sama5d35ek", "atmel,sama5d3xmb", "atmel,sama5d3xcm", "atmel,sama5d35", "atmel,sama5d3", "atmel,sama5";
+
+	ahb {
+		apb {
+			/* SPI-NOR boot flash (at25df321a) -- real, keep on. */
+			spi0: spi@f0004000 {
+				status = "okay";
+			};
+
+			/*
+			 * Real hardware, "okay" in production -- disabled here
+			 * only to free PD14 (can0_rx_tx) for the GPIO loopback
+			 * test.
+			 */
+			can0: can@f000c000 {
+				status = "disabled";
+			};
+
+			/*
+			 * "okay" by default via sama5d3xmb.dtsi. No known real
+			 * use of this UART on the SAMA5-CARRIER; disabled to
+			 * free PB28/PB29.
+			 */
+			usart1: serial@f0020000 {
+				status = "disabled";
+			};
+
+			/*
+			 * "okay" by default via sama5d3xmb.dtsi, using
+			 * ADTRG+AD0-AD4 (PD19-PD24). No known real use of the
+			 * ADC on the SAMA5-CARRIER; disabled to free those pins.
+			 */
+			adc0: adc@f8018000 {
+				status = "disabled";
+			};
+
+			/*
+			 * No I2C device on this bus on the SAMA5-CARRIER.
+			 * Disabled here (test dts only -- production
+			 * sama5d35ek.dts leaves it on) to free PC26/PC27.
+			 */
+			i2c1: i2c@f0018000 {
+				status = "disabled";
+			};
+
+			/* eth0, real KSZ9131 GbE PHY. Keep on. */
+			macb0: ethernet@f0028000 {
+				status = "okay";
+			};
+
+			/*
+			 * No second RJ45 on the SAMA5-CARRIER. Left disabled
+			 * (the sama5d3.dtsi/sama5d3xmb.dtsi default) to free
+			 * PC0-PC9 (RMII+MDIO).
+			 */
+			macb1: ethernet@f802c000 {
+				status = "disabled";
+			};
+
+			/*
+			 * No SD card slot on the SAMA5-CARRIER. sama5d3xmb.dtsi
+			 * enables both by default for the eval kit's SD slots;
+			 * overridden off here to free the MCI0/MCI1 pins.
+			 * (mmc2/MCI2 is already disabled by default upstream.)
+			 */
+			mmc0: mmc@f0000000 {
+				status = "disabled";
+			};
+
+			mmc1: mmc@f8000000 {
+				status = "disabled";
+			};
+		};
+	};
+
+	/*
+	 * "d2" (PE25) is a real onboard heartbeat-trigger status LED,
+	 * defined in sama5d3xcm.dtsi's "leds" node. Not wanted for this
+	 * test image: PE25 is needed as a plain GPIO for the J12 row 1
+	 * loopback pair. leds-gpio's probe skips child nodes with
+	 * status = "disabled", so overriding just this one is enough.
+	 */
+	leds {
+		d2 {
+			status = "disabled";
+		};
+	};
+};

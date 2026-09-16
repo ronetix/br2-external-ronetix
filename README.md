@@ -13,21 +13,28 @@ boards, layered on top of stock `linux4microchip/buildroot-mchp`
 
 ```
 external.desc               # declares this tree as "RONETIX"
-Config.in                   # extra package Kconfig (currently empty)
-external.mk                 # extra package rules (currently empty)
+Config.in                   # sources package/modtest/Config.in
+external.mk                 # includes package/*/*.mk
 configs/
   pm9g45_defconfig
   sama5d3x_cm_defconfig
+  sama5d3x_cm_test_defconfig # sama5d3x-cm + modtest, separate test-only
+                              # dts -- see "modtest" in board/ronetix/README.md
   sam9x5_cm_defconfig
 board/ronetix/
   README.md                 # architecture notes / open items (read this)
   common/patches/linux/*.patch   # patches shared by more than one board
   pm9g45/patches/{linux,uboot}/*.patch
   sama5d3x-cm/patches/{linux,uboot}/*.patch
+  sama5d3x-cm/dts/sama5d35ek-modtest.dts  # test-only dts, modtest image only
   sam9x5-cm/patches/uboot/*.patch
 global-patches/
   dtc/*.patch                # fixes for stock (non-Ronetix) packages --
                               # see "Global patches" in board/ronetix/README.md
+package/modtest/
+  Config.in, modtest.mk      # production test tool (GPIO pair test +
+  files/                     # functional checks) -- see "modtest" in
+                              # board/ronetix/README.md
 ```
 
 ## Using it
@@ -42,6 +49,11 @@ make
 
 # or
 make BR2_EXTERNAL=../br2-external-ronetix sama5d3x_cm_defconfig
+make
+
+# or, sama5d3x-cm's production test image (modtest, separate test-only
+# dts -- see "modtest" in board/ronetix/README.md):
+make BR2_EXTERNAL=../br2-external-ronetix sama5d3x_cm_test_defconfig
 make
 
 # or

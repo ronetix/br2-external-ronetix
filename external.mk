@@ -1,1 +1,1 @@
-# No extra packages yet — see Config.in.
+include $(sort $(wildcard $(BR2_EXTERNAL_RONETIX_PATH)/package/*/*.mk))

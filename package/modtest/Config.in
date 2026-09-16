@@ -1,0 +1,48 @@
+config BR2_PACKAGE_MODTEST
+	bool "modtest"
+	depends on BR2_TOOLCHAIN_HEADERS_AT_LEAST_5_10 # libgpiod2
+	depends on BR2_USE_MMU # util-linux binaries
+	select BR2_PACKAGE_LIBGPIOD2
+	select BR2_PACKAGE_LIBGPIOD2_TOOLS
+	select BR2_PACKAGE_ETHTOOL
+	select BR2_PACKAGE_BUSYBOX_SHOW_OTHERS # menuconfig visibility for i2c-tools, not a real dependency
+	select BR2_PACKAGE_I2C_TOOLS
+	select BR2_PACKAGE_MEMTESTER
+	select BR2_PACKAGE_UTIL_LINUX
+	select BR2_PACKAGE_UTIL_LINUX_BINARIES
+	help
+	  Ronetix AT91 SoM production test: a GPIO loopback pair test
+	  (gpiotest, against a test carrier that shorts connector pins
+	  together in known pairs) plus a functional-check runner
+	  (modtest: CPU, DDR, NAND, MMC where present, Ethernet, I2C,
+	  USB storage).
+
+	  For this tree's three AT91 boards (pm9g45, sama5d3x-cm,
+	  sam9x5-cm). See board/ronetix/README.md's "modtest" section
+	  for what each check does and how to add the GPIO pin-pair map
+	  once a production test carrier's pinout is known -- none is
+	  shipped by default for pm9g45 or sam9x5-cm.
+
+if BR2_PACKAGE_MODTEST
+
+choice
+	prompt "target board"
+	default BR2_PACKAGE_MODTEST_PM9G45
+	help
+	  Which board this build is for -- selects which per-board
+	  /etc/modtest/modtest.env defaults get installed. See each
+	  board's own top-level defconfig for which of these three
+	  choices it selects.
+
+config BR2_PACKAGE_MODTEST_PM9G45
+	bool "pm9g45"
+
+config BR2_PACKAGE_MODTEST_SAMA5D3X_CM
+	bool "sama5d3x-cm"
+
+config BR2_PACKAGE_MODTEST_SAM9X5_CM
+	bool "sam9x5-cm"
+
+endchoice
+
+endif
