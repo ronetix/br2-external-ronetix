@@ -1,0 +1,18 @@
+#!/bin/sh
+#
+# Run modtest once at boot and log the result.
+#
+
+LOG=/var/log/modtest.log
+
+case "$1" in
+	start)
+		echo "Running modtest, see $LOG"
+		/usr/bin/modtest 2>&1 | tee "$LOG"
+		;;
+	stop|restart|reload)
+		;;
+	*)
+		echo "Usage: $0 {start}"
+		exit 1
+esac

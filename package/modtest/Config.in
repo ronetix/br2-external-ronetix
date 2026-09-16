@@ -45,4 +45,16 @@ config BR2_PACKAGE_MODTEST_SAM9X5_CM
 
 endchoice
 
+config BR2_PACKAGE_MODTEST_AUTOSTART
+	bool "run automatically at boot"
+	help
+	  Install an /etc/init.d/S99modtest script that runs modtest once
+	  at boot (after networking has had a chance to come up) and logs
+	  its output to /var/log/modtest.log as well as the console, so a
+	  test station gets a PASS/FAIL without an operator having to log
+	  in and run it by hand.
+
+	  Leave this off for a build that should only run modtest when
+	  invoked manually.
+
 endif

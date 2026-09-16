@@ -56,4 +56,11 @@ define MODTEST_INSTALL_TARGET_CMDS
 			$(TARGET_DIR)/etc/modtest/pins.pairs)
 endef
 
+ifeq ($(BR2_PACKAGE_MODTEST_AUTOSTART),y)
+define MODTEST_INSTALL_INIT_SYSV
+	$(INSTALL) -D -m 0755 $(MODTEST_PKGDIR)/files/scripts/S99modtest \
+		$(TARGET_DIR)/etc/init.d/S99modtest
+endef
+endif
+
 $(eval $(generic-package))

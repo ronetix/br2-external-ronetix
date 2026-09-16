@@ -80,6 +80,9 @@ BR2_PACKAGE_HOST_SAM_BA=y
 BR2_SYSTEM_DHCP="eth0"
 
 # Production test tool (GPIO loopback pair test + functional checks).
-# See board/ronetix/README.md's "modtest" section.
+# See board/ronetix/README.md's "modtest" section. Runs automatically
+# at boot (logs to /var/log/modtest.log and the console) so a test
+# station gets a result without an operator having to log in.
 BR2_PACKAGE_MODTEST=y
 BR2_PACKAGE_MODTEST_SAMA5D3X_CM=y
+BR2_PACKAGE_MODTEST_AUTOSTART=y
