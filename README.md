@@ -46,26 +46,26 @@ git clone -b linux4microchip-2026.04 https://github.com/linux4microchip/buildroo
 git clone https://github.com/ronetix/br2-external-ronetix.git   # this tree
 
 cd buildroot-mchp
-make BR2_EXTERNAL=../br2-external-ronetix pm9g45_defconfig
-make
+make BR2_EXTERNAL=../br2-external-ronetix pm9g45_defconfig O=../output-pm9g45
+make O=../output-pm9g45
 
 # or, pm9g45's production test image (modtest, autostarted at boot --
 # see "modtest" in board/ronetix/README.md):
-make BR2_EXTERNAL=../br2-external-ronetix pm9g45_test_defconfig
-make
+make BR2_EXTERNAL=../br2-external-ronetix pm9g45_test_defconfig O=../output-pm9g45-test
+make O=../output-pm9g45-test
 
 # or
-make BR2_EXTERNAL=../br2-external-ronetix sama5d3x_cm_defconfig
-make
+make BR2_EXTERNAL=../br2-external-ronetix sama5d3x_cm_defconfig O=../output-sama5d3x-cm
+make O=../output-sama5d3x-cm
 
 # or, sama5d3x-cm's production test image (modtest, separate test-only
 # dts -- see "modtest" in board/ronetix/README.md):
-make BR2_EXTERNAL=../br2-external-ronetix sama5d3x_cm_test_defconfig
-make
+make BR2_EXTERNAL=../br2-external-ronetix sama5d3x_cm_test_defconfig O=../output-sama5d3x-cm-test
+make O=../output-sama5d3x-cm-test
 
 # or
-make BR2_EXTERNAL=../br2-external-ronetix sam9x5_cm_defconfig
-make
+make BR2_EXTERNAL=../br2-external-ronetix sam9x5_cm_defconfig O=../output-sam9x5-cm
+make O=../output-sam9x5-cm
 ```
 
 (`buildroot-external-microchip`, Microchip's own companion br2-external
