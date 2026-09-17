@@ -65,11 +65,22 @@ Two pieces, both installed to the target's `/usr/bin/`:
 - **`modtest`** (`scripts/modtest.sh`) — a POSIX shell runner that
   calls `gpiotest` plus functional checks, printing one
   `TEST <name> <PASS|FAIL|SKIP> <detail>` record per check and a final
-  `RESULT PASS`/`FAIL`:
+  `RESULT PASS`/`FAIL`. With `-t` (only when stdin is also a real tty,
+  e.g. a station's console — silently skipped otherwise even with
+  `-t`) it waits 2s at startup for any keypress to abort before running
+  any subtest, for skipping a run whose settings (e.g. a large
+  `DDR_TEST_SIZE`) are known to be too slow for that station without
+  editing the `.env` and rebooting; aborting this way exits 2, distinct
+  from `0`/`1` for pass/fail. Without `-t` (the default for a manual or
+  scripted run) it never waits. `S99modtest` passes `-t` at boot.
   - **cpu** — sanity-checks `/proc/cpuinfo` against the expected core.
   - **ddr_size**/**ddr_pattern** — reports `/proc/meminfo`'s size and
     runs `memtester` (if installed) over a configurable chunk
-    (`DDR_MB`).
+    (`DDR_TEST_SIZE`, passed straight through to memtester's own
+    `<mem>[SUFFIX]` argument, e.g. `32M` — not a bare MB count).
+    Defaults to `1M` (fast) unless a board's `.env` overrides it;
+    testing all of DDR is thorough but slow, since memtester runs 9
+    patterns per pass. `DDR_TEST_SIZE=0` SKIPs `ddr_pattern` entirely.
   - **nand** — looks up the rootfs MTD partition **by label**
     (`MTD_PART_LABEL`, default `"rootfs"`) via `/proc/mtd`, not a
     hardcoded device index, since a numeric MTD index breaks silently
@@ -294,6 +305,13 @@ dts's own header comment explains why it exists and how it relates to
 this board's two dts-modifying patches above (both replicated into it
 by hand, since it's built standalone and never goes through the patch
 queue).
+
+The SoM does have a real `mmc0` slot (`pm9g45.dts`'s `mmc0` node,
+already `status = "okay"` in production, 4-bit bus, `cd-gpios` on
+`PD6`) — confirmed on real hardware with a card fitted: enumerates as
+`mmcblk0`. `pm9g45.env` sets `MMC_DEV=/dev/mmcblk0` accordingly, so
+modtest's `mmc` check runs on this board (see "modtest" above for what
+that check does).
 
 ## sama5d3x-cm
 

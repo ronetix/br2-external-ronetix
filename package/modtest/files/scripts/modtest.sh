@@ -4,12 +4,17 @@
 # (pm9g45, sama5d3x-cm, sam9x5-cm).
 #
 # Runs each subtest and prints one parseable record per result to stdout.
-# Exit code 0 = all pass, 1 = at least one failure.
+# Exit code 0 = all pass, 1 = at least one failure, 2 = aborted by operator
+# (see the "press any key" prompt at startup).
 #
 # Every record has the form:
 #   TEST <name> <PASS|FAIL|SKIP> <detail>
 #
-# Deliberately POSIX sh so it runs on a minimal Buildroot image with busybox.
+# Deliberately POSIX sh so it runs on a minimal Buildroot image with
+# busybox -- the one exception is the startup abort prompt's "read -t -n
+# -s", a busybox ash extension (unconditionally built into busybox's
+# shell_common.c, not behind a separate config option), since there's no
+# portable POSIX way to read a single keypress with a timeout.
 #
 # Board-specific defaults are sourced from /etc/modtest/modtest.env if
 # present (installed by the modtest package for whichever board's defconfig
@@ -24,21 +29,26 @@ set -u
 
 # ---- command-line options --------------------------------------------------
 ONLY_GPIO=0
+WAIT_KEY=0
 
 usage() {
 	cat <<-EOF
-	Usage: $(basename "$0") [-g] [-h]
+	Usage: $(basename "$0") [-g] [-t] [-h]
 
 	  -g   run only the GPIO pair test: exec's straight into
 	       "gpiotest -c \$PAIRMAP" (native banner/colors), skipping
 	       every other subtest and modtest's own TEST/SUMMARY wrapper
+	  -t   wait 2s at startup for a keypress to abort (see the startup
+	       comment below) -- off by default, so a manual/scripted run
+	       never waits; S99modtest passes this at boot
 	  -h   show this help and exit
 	EOF
 }
 
-while getopts "gh" opt; do
+while getopts "gth" opt; do
 	case "$opt" in
 		g) ONLY_GPIO=1 ;;
+		t) WAIT_KEY=1 ;;
 		h) usage; exit 0 ;;
 		*) usage >&2; exit 1 ;;
 	esac
@@ -88,7 +98,10 @@ PAIRMAP=${PAIRMAP:-/etc/modtest/pins.pairs}
 ETH_IF=${ETH_IF:-eth0}
 MMC_DEV=${MMC_DEV:-}
 MTD_PART_LABEL=${MTD_PART_LABEL:-rootfs}
-DDR_MB=${DDR_MB:-1}
+DDR_TEST_SIZE=${DDR_TEST_SIZE:-1M}
+# Unset falls back to 1M above. "0" is different: an explicit opt-out,
+# SKIPping ddr_pattern entirely instead of passing "0M" to memtester
+# (which would just fail) -- see the DDR section below.
 
 # -g is an interactive shortcut for re-checking just the connector, not
 # another automated station record, so it hands the terminal straight to
@@ -134,6 +147,23 @@ else
 fi
 printf '%sINFO%s kernel=%s machine=%s\n' "$c_dim" "$c_reset" "$(uname -r)" "$(uname -m)"
 
+# A 2s window to abort right at startup, e.g. to skip a run whose DDR/other
+# test settings are known to be too slow for this station without editing
+# the .env and rebooting. Only with -t (S99modtest passes it at boot) --
+# a manual/scripted run (no -t) never waits. Also silent no-op if stdin
+# isn't a real tty (e.g. no console attached at boot) even with -t --
+# read -t would otherwise either fail instantly or hang depending on
+# what's on the other end of stdin, and there is no operator present to
+# press anything anyway.
+if [ "$WAIT_KEY" -eq 1 ] && [ -t 0 ]; then
+	printf '%sPress any key within 2s to abort...%s' "$c_dim" "$c_reset"
+	if read -t 2 -n 1 -s _key; then
+		printf '\n%sMODTEST aborted by operator%s\n' "$c_bold" "$c_reset"
+		exit 2
+	fi
+	printf '\r%*s\r' 40 ''
+fi
+
 # ---------------------------------------------------------------- CPU / SoC
 # Each of these boards' kernels reports a distinct machine string, and
 # Atmel's own SoC bus driver (drivers/soc/atmel/soc.c) populates
@@ -167,13 +197,23 @@ fi
 # /proc/meminfo's MemTotal is already KiB; MiB (binary) is what matches how
 # DDR capacity is specified (128MB, 256MB, ...), unlike eMMC/NAND's decimal
 # GB/MB below.
+#
+# DDR_TEST_SIZE is passed straight through to memtester's own <mem>[SUFFIX]
+# argument (e.g. "32M", "128M"), not a bare MB count -- testing all of DDR
+# is thorough but slow (memtester runs 9 patterns per pass), so this is
+# deliberately a configurable chunk, not mem_mb, and defaults small (1M)
+# unless a board's .env overrides it. DDR_TEST_SIZE=0 skips ddr_pattern
+# entirely, for a station where even a small chunk is too slow to be
+# worth it every run.
 mem_kb=$(awk '/MemTotal/{print $2}' /proc/meminfo)
 mem_mb=$(awk -v kb="$mem_kb" 'BEGIN { printf "%.0f", kb / 1024 }')
 record ddr_size PASS "${mem_mb}MB"
 
-if command -v memtester >/dev/null 2>&1; then
-	if memtester "${DDR_MB}M" 1 >/tmp/memtester.out 2>&1; then
-		record ddr_pattern PASS "${DDR_MB}MB"
+if [ "$DDR_TEST_SIZE" = "0" ]; then
+	record ddr_pattern SKIP "DDR_TEST_SIZE=0"
+elif command -v memtester >/dev/null 2>&1; then
+	if memtester "$DDR_TEST_SIZE" 1 >/tmp/memtester.out 2>&1; then
+		record ddr_pattern PASS "$DDR_TEST_SIZE"
 	else
 		record ddr_pattern FAIL "see /tmp/memtester.out"
 	fi

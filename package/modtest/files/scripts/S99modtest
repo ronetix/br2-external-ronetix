@@ -12,7 +12,10 @@ case "$1" in
 		# which is false once piped through tee below -- force it on
 		# so the console still gets the colorized PASS/FAIL output
 		# (this also lands in $LOG, ANSI codes and all).
-		MODTEST_COLOR=always /usr/bin/modtest 2>&1 | tee "$LOG"
+		# -t: give an operator at the console a 2s window to abort
+		# (see modtest.sh's own comment) -- a no-op if stdin isn't a
+		# real tty, e.g. no console attached at boot.
+		MODTEST_COLOR=always /usr/bin/modtest -t 2>&1 | tee "$LOG"
 		;;
 	stop|restart|reload)
 		;;
