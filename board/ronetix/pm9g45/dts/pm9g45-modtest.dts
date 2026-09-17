@@ -1,0 +1,358 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * pm9g45-modtest.dts - Ronetix PM9G45 + BB9G45 production test device
+ * tree.
+ *
+ * Identical to the production pm9g45.dts (both of its patches --
+ * partition table, led0/usb-vbus fix -- replicated here verbatim,
+ * since this file is built standalone via BR2_LINUX_KERNEL_CUSTOM_DTS_PATH
+ * and never goes through board/ronetix/pm9g45/patches/linux/ itself)
+ * except for one addition: a pinctrl hog that puts every BB9G45 J12/J13
+ * pin exercised by modtest's gpiotest loopback test into plain GPIO
+ * mode with an actively enabled pull-UP.
+ *
+ * That hog is necessary -- not just a nice-to-have -- because
+ * gpiotest's own runtime 'intbias=' request (via libgpiod's
+ * GPIO_LINE_REQUEST bias flag) has no effect on this SoC's pinctrl
+ * driver (atmel,at91rm9200-pinctrl / pinctrl-at91.c), exactly like
+ * sama5d3x-cm's own gpiochip driver (see that board's
+ * sama5d35ek-modtest.dts and board/ronetix/README.md) -- a static,
+ * boot-time pinctrl hog is the only mechanism that actually applies a
+ * bias here too.
+ *
+ * It's pull-UP, not pull-down like sama5d3x-cm's hog: the AT91SAM9G45
+ * (Microchip datasheet doc6438E, Table 46-2 "DC Characteristics" and
+ * section 29.4.1 "Pull-up Resistor Control") only implements a real
+ * internal pull-up on general PIO lines (RPULLUP, typ. 75kOhm) --
+ * there is no RPULLDOWN row in that table and no corresponding
+ * pull-down section in chapter 29.4 at all: this chip has no internal
+ * pull-down. pm9g45.pairs marks every row 'extbias=up' to match this
+ * hog.
+ *
+ * NOT used by the production pm9g45_defconfig -- that one still boots
+ * the in-tree, patched pm9g45.dts unmodified. This file is only pulled
+ * in by pm9g45_test_defconfig via BR2_LINUX_KERNEL_CUSTOM_DTS_PATH, for
+ * the modtest production-test image.
+ */
+/dts-v1/;
+#include "microchip/at91sam9g45.dtsi"
+
+/ {
+	/*
+	 * "modtest" in the model string is a quick way to confirm which
+	 * dtb actually booted (`cat /sys/firmware/devicetree/base/model`)
+	 * before chasing a gpiotest failure as a hog-configuration bug.
+	 * compatible is left unchanged so nothing driver-visible depends
+	 * on it.
+	 */
+	model = "Ronetix pm9g45 (modtest)";
+	compatible = "ronetix,pm9g45", "atmel,at91sam9g45", "atmel,at91sam9";
+
+	chosen {
+		bootargs = "console=ttyS0,115200";
+	};
+
+	memory@70000000 {
+		reg = <0x70000000 0x8000000>;
+	};
+
+	clocks {
+		slow_xtal {
+		      clock-frequency = <32768>;
+		};
+
+		main_xtal {
+		      clock-frequency = <12000000>;
+		};
+	};
+
+	ahb {
+		apb {
+			dbgu: serial@ffffee00 {
+				status = "okay";
+			};
+
+			pinctrl@fffff200 {
+				/*
+				 * modtest: every BB9G45 J12/J13 pin this
+				 * board's pm9g45.pairs exercises, forced to
+				 * plain GPIO with an active pull-UP at
+				 * boot via the pin controller's own "hog"
+				 * mechanism (pinctrl_claim_hogs() in
+				 * drivers/pinctrl/core.c) -- see file header
+				 * comment above for why a runtime gpiotest
+				 * request alone doesn't work here, and why
+				 * pull-up rather than pull-down.
+				 *
+				 * Must precede the nand/mmc subnodes below --
+				 * dts requires a node's own properties before
+				 * any of its subnodes.
+				 *
+				 * The group itself is nested two levels below
+				 * this node (a "board" function node
+				 * containing this "modtest-pullup" group
+				 * node, matching every other real group in
+				 * this dtsi, e.g. dbgu/dbgu-0, nand/nand-rb-0
+				 * below) rather than a direct child of
+				 * pinctrl@fffff200 -- otherwise
+				 * pinctrl-at91.c's hog resolution can't find
+				 * it by name and the whole pinctrl driver
+				 * probe fails, taking the console down with
+				 * it.
+				 *
+				 * J14 is not covered: it's the live NAND/EBI
+				 * bus, deliberately excluded from testing
+				 * entirely (see pm9g45.pairs). PB12/PB13
+				 * (dbgu) and PD0/PD8 (USB0/1 vbus-gpio) are
+				 * also not covered: real hardware functions
+				 * this image still needs, excluded from
+				 * pm9g45.pairs rather than freed here.
+				 * PB2/PB3 are tested (see
+				 * pm9g45.pairs) but deliberately not in this
+				 * array: PB3's own permanent 100kOhm pull-up
+				 * (R17, SPI0_NPCS0's deselect resistor) already
+				 * agrees with this hog's pull-up direction, so
+				 * it needs no reinforcement here.
+				 */
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_modtest_pullup>;
+
+				nand {
+					pinctrl_nand_rb: nand-rb-0 {
+						atmel,pins =
+							<AT91_PIOD 3 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP>;
+					};
+				};
+
+				mmc {
+					pinctrl_board_mmc: mmc0-board {
+						atmel,pins =
+							<AT91_PIOD 6 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP_DEGLITCH>;	/* PD6 gpio CD pin pull_up and deglitch */
+					};
+				};
+
+				board {
+					pinctrl_modtest_pullup: modtest-pullup {
+						atmel,pins =
+							<
+							 AT91_PIOB 0  AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p3_PB0 */
+							 AT91_PIOB 1  AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p4_PB1 */
+							 /* J12p5_PB2/J12p6_PB3: not in this array, see pinctrl node comment above */
+							 AT91_PIOB 4  AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p7_PB4 */
+							 AT91_PIOB 5  AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p8_PB5 */
+							 AT91_PIOB 6  AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p9_PB6 */
+							 AT91_PIOB 7  AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p10_PB7 */
+							 AT91_PIOB 8  AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p11_PB8 */
+							 AT91_PIOB 9  AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p12_PB9 */
+							 AT91_PIOB 10 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p13_PB10 */
+							 AT91_PIOB 11 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p14_PB11 */
+							 AT91_PIOB 14 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p17_PB14 */
+							 AT91_PIOB 15 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p18_PB15 */
+							 AT91_PIOB 16 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p19_PB16 */
+							 AT91_PIOB 17 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p20_PB17 */
+							 AT91_PIOB 18 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p21_PB18 */
+							 AT91_PIOB 19 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p22_PB19 */
+							 AT91_PIOB 20 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p23_PB20 */
+							 AT91_PIOB 21 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p24_PB21 */
+							 AT91_PIOB 22 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p25_PB22 */
+							 AT91_PIOB 23 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p26_PB23 */
+							 AT91_PIOB 24 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p27_PB24 */
+							 AT91_PIOB 25 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p28_PB25 */
+							 AT91_PIOB 26 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p29_PB26 */
+							 AT91_PIOB 27 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p30_PB27 */
+							 AT91_PIOB 28 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p31_PB28 */
+							 AT91_PIOB 29 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p32_PB29 */
+							 AT91_PIOB 30 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p33_PB30 */
+							 AT91_PIOB 31 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p34_PB31 */
+							 AT91_PIOA 8  AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p3_PA8 */
+							 AT91_PIOA 9  AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p4_PA9 */
+							 AT91_PIOA 20 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p5_PA20 */
+							 AT91_PIOA 21 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p6_PA21 */
+							 AT91_PIOA 23 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p7_PA23 */
+							 AT91_PIOA 24 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p8_PA24 */
+							 AT91_PIOA 25 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p9_PA25 */
+							 AT91_PIOA 28 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p10_PA28 */
+							 AT91_PIOC 6  AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p11_PC6 */
+							 AT91_PIOC 8  AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p12_PC8 */
+							 AT91_PIOC 9  AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p13_PC9 */
+							 AT91_PIOC 10 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p14_PC10 */
+							 AT91_PIOC 11 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p15_PC11 */
+							 AT91_PIOC 12 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p16_PC12 */
+							 AT91_PIOC 13 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p17_PC13 */
+							 AT91_PIOC 15 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p18_PC15 */
+							 AT91_PIOD 16 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p24_PD16 */
+							 AT91_PIOD 17 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p23_PD17 */
+							 AT91_PIOD 18 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p26_PD18 */
+							 AT91_PIOD 19 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p25_PD19 */
+							 AT91_PIOD 20 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p28_PD20 */
+							 AT91_PIOD 21 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p27_PD21 */
+							 AT91_PIOD 22 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p30_PD22 */
+							 AT91_PIOD 23 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p29_PD23 */
+							 AT91_PIOD 24 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p32_PD24 */
+							 AT91_PIOD 25 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p31_PD25 */
+							 AT91_PIOD 27 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p34_PD27 */
+							 AT91_PIOD 28 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p33_PD28 */
+							 AT91_PIOD 29 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p36_PD29 */
+							 AT91_PIOD 30 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J13p35_PD30 */
+							 AT91_PIOD 31 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p38_PD31 */
+							 AT91_PIOE 31 AT91_PERIPH_GPIO AT91_PINCTRL_PULL_UP	/* J12p36_PE31 */
+							>;
+					};
+				};
+			};
+
+			tcb0: timer@fff7c000 {
+				timer@0 {
+					compatible = "atmel,tcb-timer";
+					reg = <0>, <1>;
+				};
+
+				timer@2 {
+					compatible = "atmel,tcb-timer";
+					reg = <2>;
+				};
+			};
+
+			mmc0: mmc@fff80000 {
+				pinctrl-0 = <
+					&pinctrl_board_mmc
+					&pinctrl_mmc0_slot0_clk_cmd_dat0
+					&pinctrl_mmc0_slot0_dat1_3>;
+				pinctrl-names = "default";
+				status = "okay";
+				slot@0 {
+					reg = <0>;
+					bus-width = <4>;
+					cd-gpios = <&pioD 6 GPIO_ACTIVE_HIGH>;
+				};
+			};
+
+			macb0: ethernet@fffbc000 {
+				phy-mode = "rmii";
+				status = "okay";
+			};
+		};
+
+		ebi: ebi@10000000 {
+			status = "okay";
+
+			nand_controller: nand-controller {
+				status = "okay";
+				pinctrl-0 = <&pinctrl_nand_cs &pinctrl_nand_rb>;
+				pinctrl-names = "default";
+
+				nand@3 {
+					reg = <0x3 0x0 0x800000>;
+					rb-gpios = <&pioD 3 GPIO_ACTIVE_HIGH>;
+					cs-gpios = <&pioC 14 GPIO_ACTIVE_HIGH>;
+					nand-bus-width = <8>;
+					nand-ecc-mode = "soft";
+					nand-on-flash-bbt;
+					label = "atmel_nand";
+
+					partitions {
+						compatible = "fixed-partitions";
+						#address-cells = <1>;
+						#size-cells = <1>;
+
+						at91bootstrap@0 {
+							label = "at91bootstrap";
+							reg = <0x0 0x20000>;
+						};
+
+						uboot@20000 {
+							label = "u-boot";
+							reg = <0x20000 0xe0000>;
+						};
+
+						ubootenv@100000 {
+							label = "uboot env";
+							reg = <0x100000 0x40000>;
+						};
+
+						ubootenv2@140000 {
+							label = "uboot env";
+							reg = <0x140000 0x40000>;
+						};
+
+						dtb@180000 {
+							label = "device tree";
+							reg = <0x180000 0x800000>;
+						};
+
+						kernel@200000 {
+							label = "kernel";
+							reg = <0x200000 0x600000>;
+						};
+
+						data@800000 {
+							label = "rootfs";
+							reg = <0x800000 0x8000000>;
+						};
+					};
+				};
+			};
+		};
+
+		usb0: ohci@700000 {
+			status = "okay";
+			num-ports = <2>;
+			atmel,vbus-gpio = <&pioD 0 GPIO_ACTIVE_LOW
+					   &pioD 8 GPIO_ACTIVE_LOW>;
+		};
+
+		usb1: ehci@800000 {
+			status = "okay";
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led0 {
+			/*
+			 * Disabled here (production keeps it enabled) to
+			 * free PD30 for gpiotest -- see led1's own comment
+			 * below for the mechanism. See pm9g45.pairs'
+			 * J13p35_PD30/J13p36_PD29 row and its own comment.
+			 */
+			status = "disabled";
+			label = "led0";
+			gpios = <&pioD 30 GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "nand-disk";
+		};
+
+		led1 {
+			/*
+			 * Disabled here (production keeps it enabled) to
+			 * free PD31 for gpiotest -- leds-gpio.c uses
+			 * of_get_next_available_child(), which honors
+			 * "status", so this node is skipped at probe
+			 * instead of claiming the gpio. See pm9g45.pairs'
+			 * J12p38_PD31/J12p36_PE31 row and its own comment.
+			 */
+			status = "disabled";
+			label = "led1";
+			gpios = <&pioD 31 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "heartbeat";
+		};
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		right {
+			label = "SW4";
+			gpios = <&pioE 7 GPIO_ACTIVE_LOW>;
+			linux,code = <106>;
+		};
+
+		up {
+			label = "SW3";
+			gpios = <&pioE 8 GPIO_ACTIVE_LOW>;
+			linux,code = <103>;
+		};
+	};
+};

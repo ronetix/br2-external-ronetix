@@ -17,6 +17,8 @@ Config.in                   # sources package/modtest/Config.in
 external.mk                 # includes package/*/*.mk
 configs/
   pm9g45_defconfig
+  pm9g45_test_defconfig      # pm9g45 + modtest, autostarted at boot --
+                              # see "modtest" in board/ronetix/README.md
   sama5d3x_cm_defconfig
   sama5d3x_cm_test_defconfig # sama5d3x-cm + modtest, separate test-only
                               # dts -- see "modtest" in board/ronetix/README.md
@@ -45,6 +47,11 @@ git clone https://github.com/ronetix/br2-external-ronetix.git   # this tree
 
 cd buildroot-mchp
 make BR2_EXTERNAL=../br2-external-ronetix pm9g45_defconfig
+make
+
+# or, pm9g45's production test image (modtest, autostarted at boot --
+# see "modtest" in board/ronetix/README.md):
+make BR2_EXTERNAL=../br2-external-ronetix pm9g45_test_defconfig
 make
 
 # or

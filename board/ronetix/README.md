@@ -120,8 +120,73 @@ skipped otherwise, so `modtest` reports SKIP for the `gpio` check.
 SAMA5-CARRIER's J12–J17 headers (`SAMA5-CARRIER_Schematic.PDF`, sheet 6
 "IO"), matching the carrier's shorting-jig convention (each header's
 pin1–pin2, pin3–pin4, ... shorted together, wired on the schematic as
-two different SoC GPIO signals per row). pm9g45 and sam9x5-cm have none
-yet — their carriers' pinouts aren't defined.
+two different SoC GPIO signals per row). `pm9g45.pairs` is also shipped:
+31 pairs (62 unique labels) across the BB9G45 baseboard's J12/J13
+headers (`pm9g45_carrier_scheamtics.pdf`, sheet 6 "Extenstion I/O,
+WIFI"), same shorting-jig convention — see the pm9g45-specific notes
+below. sam9x5-cm has none yet — its carrier's pinout isn't defined.
+
+pm9g45-specific notes:
+
+- **Requires two baseboard modifications** (see `pm9g45.pairs`'s own
+  header): connect `USART1_SHDN`/`USART2_SHDN`/`USART3_SHDN` to GND at
+  `J16`, and remove `R91` and `R86` (bottom/top side respectively) to
+  free `PB5` and `PE31` for testing.
+- **J14 is deliberately not used**: its pins are the raw EBI/memory bus
+  (`D0-D15`, `A0-A10`, `NCS1`, `WE/WR0`, `NRD`, `BS1/WR1`, `BS3/WR3`),
+  confirmed against the production kernel dts to be the live NAND
+  interface this SoM boots and runs from (`pm9g45.dts`'s
+  `nand-controller` is enabled with `pinctrl_nand_cs`/`pinctrl_nand_rb`,
+  and `at91sam9g45.dtsi`'s EBI/NAND bus muxing covers the same physical
+  pins) — not a spare expansion port.
+- **`PB12`/`PB13` (J12 row 7) are excluded**: `dbgu` console (RXD/TXD),
+  needed for modtest's own logging.
+- **`PD0`/`PD8` (J13 rows 9/10) are excluded**: USB0/USB1
+  `atmel,vbus-gpio` (see the USB VBUS patch below) — actively driven by
+  the kernel, not free.
+- **`PD30`/`PD29` (J13 row 17) are tested**: `PD30` is `led0` (see the
+  same patch) in production; `pm9g45-modtest.dts` disables it (see its
+  own comment there) to free the pin, no jumper needed since row 17 is
+  a normal adjacent pair on the header.
+- **`PD31`/`PE31` (J12 pins 38/36) need an external jumper**: each is
+  `NC`-paired with its own row partner on the header itself (pin35-36
+  is `NC`/`PE31`, pin37-38 is `NC`/`PD31`), so testing them as a pair
+  needs a jumper bridging pins 36 and 38 directly, on top of the `R86`
+  removal above. `pm9g45-modtest.dts` also disables `led1` (see below)
+  to free `PD31`.
+- **`PB2`/`PB3` (J12 row 5) are tested but not in the pinctrl hog**:
+  `PB3` is `SPI0_NPCS0`, permanently pulled to 3.3V via a 100kΩ
+  resistor (`R17`) on the SoM itself, for the onboard SPI DataFlash
+  footprint's chip-select (`AT45DB321E`/`AT45DB321D`/`AT25DF321A`,
+  three alternate parts on the `CPU_IO_SPI_FLASH.SchDoc` sheet) —
+  populated on every unit regardless of whether that flash chip itself
+  is fitted (not visible in the production kernel dts, since nothing
+  there references SPI0). That fixed pull-up already agrees with this
+  board's pull-up convention (below), so it does the hog's job on its
+  own.
+- **`chip=`/`offset=` mapping**: same `PA`→`gpiochip0` ... `PE`→
+  `gpiochip4` convention as sama5d3x-cm. Confirmed on real hardware
+  via `gpioinfo` (line names `pioA0`.. `pioE31` match this numbering
+  exactly) despite the AT91SAM9G45 being an older SoC generation
+  (ARM926EJ-S / `atmel,at91rm9200-gpio` driver) than sama5d3x-cm's
+  Cortex-A5 `pinctrl-at91` driver.
+- **`extbias=up` on every row, via a test-only dts**: gpiotest's own
+  runtime bias request (`intbias=`) has no effect on this SoC's
+  pinctrl driver (`atmel,at91rm9200-pinctrl`, `pinctrl-at91.c`), same
+  conclusion as sama5d3x-cm, so `board/ronetix/pm9g45/dts/
+  pm9g45-modtest.dts` defines a boot-time pinctrl hog instead. Unlike
+  sama5d3x-cm's hog, it's **pull-up**, not pull-down: per the
+  Microchip AT91SAM9G45 datasheet (doc6438E), Table 46-2 "DC
+  Characteristics" only lists an `RPULLUP` row (typ. 75kΩ) for general
+  PIO lines, and chapter 29.4's only bias-control section is "29.4.1
+  Pull-up Resistor Control" — this chip has no internal pull-down at
+  all on PA/PB/PD/PE lines, unlike sama5d3x-cm's SoC. Every row is
+  marked `extbias=up` to match. Unlike sama5d3x-cm, every peripheral
+  this board's production dts enables stays enabled in the test dts
+  too — nothing needed disabling, since `pm9g45.pairs` was already
+  built to avoid every pin those peripherals claim (see the exclusions
+  above); the test dts is a straight copy of `pm9g45.dts` (patches
+  replicated by hand — see below) plus the hog.
 
 sama5d3x-cm-specific notes:
 
@@ -220,6 +285,15 @@ Patches (3, all verified to apply cleanly against the pinned base):
   - Polarity is `GPIO_ACTIVE_LOW` — the switch IC's `EN` pins are
     active-low. Confirmed on real hardware: both USB-A and USB-B work
     correctly.
+
+`configs/pm9g45_test_defconfig` boots a test-only dts,
+`board/ronetix/pm9g45/dts/pm9g45-modtest.dts` (see "modtest" above for
+why), and autostarts modtest at boot and brings up eth0 via DHCP
+automatically — otherwise identical to `pm9g45_defconfig`. The test
+dts's own header comment explains why it exists and how it relates to
+this board's two dts-modifying patches above (both replicated into it
+by hand, since it's built standalone and never goes through the patch
+queue).
 
 ## sama5d3x-cm
 

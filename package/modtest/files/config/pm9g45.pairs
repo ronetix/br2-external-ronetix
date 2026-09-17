@@ -1,0 +1,115 @@
+# GPIO loopback pin map for the BB9G45 baseboard
+# (pm9g45_carrier_scheamtics.pdf, sheet 6 "Extenstion I/O, WIFI",
+# connectors J12-J14), paired with a shorting jig that connects each
+# header's pin1-pin2, pin3-pin4, pin5-pin6, ... (i.e. each row of the 2x20
+# header together).
+#
+# Necessary modifications on BB9G45:
+# - J16, connect USART1_SHDN, USART2_SHDN and USART3_SHDN to GND
+# - remove R91 (bottom side). enables testing of PB5
+# - remove R86 (top side), enables testing of PE31
+#
+# Use with pm9g45_test_defconfig, which boots a test-only dts
+# (board/ronetix/pm9g45/dts/pm9g45-modtest.dts) -- see
+# board/ronetix/README.md.
+#
+# J14 is NOT used for this test: its pins are the raw EBI/memory bus
+# (D0-D15, A0-A10, NCS1, WE/WR0, NRD, BS1/WR1, BS3/WR3), which is the
+# live NAND interface this SoM boots and runs from (confirmed against
+# the production kernel dts: pm9g45.dts's nand-controller is enabled
+# with pinctrl_nand_cs/pinctrl_nand_rb, and at91sam9g45.dtsi's EBI/NAND
+# bus muxing covers the same physical pins). Testing it as GPIO would
+# require holding the bus off NAND, which isn't worth the risk on a
+# board that boots from it. Left out entirely rather than shown as
+# commented-out rows like the J12/J13 exclusions below.
+#
+# Format:
+#   LABEL_A       chip        offset   LABEL_B       chip        offset   [flags]
+#
+# Labels: J<connector>p<pin>_<port><n>, e.g. J12p3_PB0 = J12 physical pin
+# 3, SoC signal PB0.
+#
+# chip/offset: PA -> gpiochip0, PB -> gpiochip1, PC -> gpiochip2,
+# PD -> gpiochip3, PE -> gpiochip4, offset = the number after the port
+# letter (e.g. PB0 = gpiochip1 offset 0). Confirmed against a real
+# `gpioinfo` dump on hardware (line names pioA0..pioE31 match this
+# numbering).
+#
+# extbias=up: pm9g45-modtest.dts (see header above) puts every pin
+# below into a pinctrl pull-UP hog -- gpiotest's own runtime bias
+# request has no effect on this SoC's pinctrl driver, so a boot-time
+# dts hog is required, same as sama5d3x-cm. Pull-up, not pull-down
+# like sama5d3x-cm: the AT91SAM9G45 (Microchip datasheet doc6438E)
+# only implements a real internal pull-up on general PIO lines (typ.
+# 75kOhm) -- there is no pull-down hardware on this chip at all.
+#
+# Rows commented out are excluded: real hardware functions (console,
+# USB VBUS control, SPI flash chip-select pull-up), not free GPIOs.
+# Cross-checked against the production kernel dts (pm9g45.dts +
+# at91sam9g45.dtsi): dbgu (PB12/PB13), macb0 RMII (PA10-19), mmc0
+# 4-bit (PA0-5) + CD (PD6), NAND cs/rb (PC14/PD3), USB0/1 VBUS gpio
+# (PD0/PD8, from this board's 0002-*-fix-led0-gpio-add-usb-vbus.patch),
+# buttons (PE7/PE8). Everything else on J12/J13 is unclaimed by any
+# enabled node (mmc1/isi/ssc/tcb/fb/adc/i2c/usart0-3 all have pinctrl
+# groups in the dtsi but no enabled device using them).
+#
+# led0/led1 (PD30/PD31, same patch) are tested, not excluded:
+# pm9g45-modtest.dts disables both (see their own comments there) to
+# free the pins.
+#
+# PB2/PB3 (J12 row 5) are tested but deliberately not in
+# pm9g45-modtest.dts's pinctrl hog: PB3 is SPI0_NPCS0, permanently
+# pulled to 3.3V via a 100kOhm resistor (R17) on the SoM for its
+# onboard SPI DataFlash footprint's chip-select, populated on every
+# unit regardless of whether that flash chip itself is fitted (not
+# visible in the production kernel dts, since nothing there references
+# SPI0). That fixed pull-up already agrees with this file's pull-UP
+# convention, so it does the hog's job on its own -- unlike PE24/PE25
+# on sama5d3x-cm, whose equivalent external resistor isn't guaranteed
+# present on every unit and so needed a dts-level backup.
+
+# ---- J12 (PIOB, HEADER2X20) -------------------------------------------
+J12p3_PB0    gpiochip1  0    J12p4_PB1    gpiochip1  1    extbias=up
+J12p5_PB2    gpiochip1  2    J12p6_PB3    gpiochip1  3    extbias=up
+J12p7_PB4    gpiochip1  4    J12p8_PB5    gpiochip1  5    extbias=up
+J12p9_PB6    gpiochip1  6    J12p10_PB7   gpiochip1  7    extbias=up
+J12p11_PB8   gpiochip1  8    J12p12_PB9   gpiochip1  9    extbias=up
+J12p13_PB10  gpiochip1  10   J12p14_PB11  gpiochip1  11   extbias=up
+# J12p15_PB12  gpiochip1  12   J12p16_PB13  gpiochip1  13   # excluded: dbgu console (RXD/TXD)
+J12p17_PB14  gpiochip1  14   J12p18_PB15  gpiochip1  15   extbias=up
+J12p19_PB16  gpiochip1  16   J12p20_PB17  gpiochip1  17   extbias=up
+J12p21_PB18  gpiochip1  18   J12p22_PB19  gpiochip1  19   extbias=up
+J12p23_PB20  gpiochip1  20   J12p24_PB21  gpiochip1  21   extbias=up
+J12p25_PB22  gpiochip1  22   J12p26_PB23  gpiochip1  23   extbias=up
+J12p27_PB24  gpiochip1  24   J12p28_PB25  gpiochip1  25   extbias=up
+J12p29_PB26  gpiochip1  26   J12p30_PB27  gpiochip1  27   extbias=up
+J12p31_PB28  gpiochip1  28   J12p32_PB29  gpiochip1  29   extbias=up
+J12p33_PB30  gpiochip1  30   J12p34_PB31  gpiochip1  31   extbias=up
+J12p38_PD31  gpiochip3  31   J12p36_PE31  gpiochip4  31   extbias=up
+
+# The row above needs an external jumper between J12 pins 36 and 38:
+# each is NC-paired with its own row partner on the header itself
+# (pin35-36 is NC/PE31, pin37-38 is NC/PD31), not usable as a loopback
+# pair without it. Requires removing R86 (see "Necessary modifications"
+# above) to free PE31, and pm9g45-modtest.dts disables led1 to free
+# PD31.
+
+# ---- J13 (mixed PA/PC/PD, HEADER2X20) ----------------------------------
+J13p3_PA8    gpiochip0  8    J13p4_PA9    gpiochip0  9    extbias=up
+J13p5_PA20   gpiochip0  20   J13p6_PA21   gpiochip0  21   extbias=up
+J13p7_PA23   gpiochip0  23   J13p8_PA24   gpiochip0  24   extbias=up
+J13p9_PA25   gpiochip0  25   J13p10_PA28  gpiochip0  28   extbias=up
+J13p11_PC6   gpiochip2  6    J13p12_PC8   gpiochip2  8    extbias=up
+J13p13_PC9   gpiochip2  9    J13p14_PC10  gpiochip2  10   extbias=up
+J13p15_PC11  gpiochip2  11   J13p16_PC12  gpiochip2  12   extbias=up
+J13p17_PC13  gpiochip2  13   J13p18_PC15  gpiochip2  15   extbias=up
+# J13p19_PD1   gpiochip3  1    J13p20_PD0   gpiochip3  0    # excluded: PD0 is USB0 vbus-gpio
+# J13p21_PD9   gpiochip3  9    J13p22_PD8   gpiochip3  8    # excluded: PD8 is USB1 vbus-gpio
+J13p23_PD17  gpiochip3  17   J13p24_PD16  gpiochip3  16   extbias=up
+J13p25_PD19  gpiochip3  19   J13p26_PD18  gpiochip3  18   extbias=up
+J13p27_PD21  gpiochip3  21   J13p28_PD20  gpiochip3  20   extbias=up
+J13p29_PD23  gpiochip3  23   J13p30_PD22  gpiochip3  22   extbias=up
+J13p31_PD25  gpiochip3  25   J13p32_PD24  gpiochip3  24   extbias=up
+J13p33_PD28  gpiochip3  28   J13p34_PD27  gpiochip3  27   extbias=up
+J13p35_PD30  gpiochip3  30   J13p36_PD29  gpiochip3  29   extbias=up
+
