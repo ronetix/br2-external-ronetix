@@ -90,6 +90,15 @@ Two pieces, both installed to the target's `/usr/bin/`:
     unset means no check and no output line at all (not even SKIP),
     since a board or fixture with no MMC/SD to test has nothing
     meaningful to report.
+  - **onewire** — gated on the live devicetree, not a `.env` flag:
+    searches `/proc/device-tree` for any node whose `compatible`
+    contains `w1-gpio` (the exact string the kernel's own `w1-gpio.c`
+    matches on, so this doesn't assume a node name) that isn't
+    `status = "disabled"`. No such node means no line at all, same
+    convention as `mmc`. Otherwise looks for any slave device under
+    `/sys/bus/w1/devices` (a bus master's own `w1_bus_masterN`
+    directory doesn't count) — confirms a device answered a bus
+    search, not any particular family's data.
   - **eth** — requires an actual DHCP-leased IPv4 address, not just
     link-up (a 169.254.0.0/16 zeroconf address doesn't count as a
     lease). Polls `operstate` for up to `ETH_LINK_TIMEOUT` seconds
@@ -264,7 +273,7 @@ move forward later: check out the branch, pick a new commit, verify a
 build, then update the pinned hash deliberately — don't just drop back
 to the bare branch name. AT91Bootstrap3 stays on the branch name.
 
-Patches (3, all verified to apply cleanly against the pinned base):
+Patches (4, all verified to apply cleanly against the pinned base):
 
 - `patches/linux/0001-dts-microchip-pm9g45.dts-modify-partition-table.patch`
   — changes `arch/arm/boot/dts/microchip/pm9g45.dts`'s NAND partition
@@ -296,15 +305,48 @@ Patches (3, all verified to apply cleanly against the pinned base):
   - Polarity is `GPIO_ACTIVE_LOW` — the switch IC's `EN` pins are
     active-low. Confirmed on real hardware: both USB-A and USB-B work
     correctly.
+- `patches/linux/0003-dts-microchip-pm9g45.dts-add-ds2401-onewire.patch`
+  — adds a `w1-gpio` node (`compatible = "w1-gpio"; gpios = <&pioA 31
+  (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;`) for the SoM's onboard DS2401
+  serial-number chip (`U16`, "SERIAL NUMBER CHIP" on the `ETH.SchDoc`
+  sheet — present, not marked DNP, in both
+  `pm9g45_Variant_Standard_Schematic.PDF` and
+  `pm9g45_Variant_Industrial_Schematic.PDF`, so this looks like a
+  standard, always-populated component rather than a per-variant
+  option), pulled up via a 2.2kΩ resistor (`R81`) to `VCC_3V3`.
+  `GPIO_OPEN_DRAIN` matches how
+  `w1-gpio.c` actually requests the pin (`GPIOD_OUT_LOW_OPEN_DRAIN` —
+  a 1-Wire master must only pull the line low or release it, never
+  drive it high, since the bus is shared and relies on the pull-up for
+  its high state); without it, gpiolib silently enforces open-drain in
+  software anyway and logs a "please flag it properly in DT" warning.
+  `PA31` isn't used anywhere else in this dts or exposed on any BB9G45
+  header, so this has no interaction with the `gpio` check's J12/J13
+  pin map. Needs `board/ronetix/pm9g45/linux-w1.config` (`CONFIG_W1`,
+  `CONFIG_W1_MASTER_GPIO`) merged in via
+  `BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES` — no `CONFIG_W1_SLAVE_*` is
+  needed, since DS2401 (family `0x01`) carries no data beyond its own
+  ROM ID, which the w1 core exposes generically. Confirmed on real
+  hardware: enumerates as `01-xxxxxxxxxxxx` under
+  `/sys/bus/w1/devices/`.
 
-`configs/pm9g45_test_defconfig` boots a test-only dts,
-`board/ronetix/pm9g45/dts/pm9g45-modtest.dts` (see "modtest" above for
-why), and autostarts modtest at boot and brings up eth0 via DHCP
-automatically — otherwise identical to `pm9g45_defconfig`. The test
-dts's own header comment explains why it exists and how it relates to
-this board's two dts-modifying patches above (both replicated into it
-by hand, since it's built standalone and never goes through the patch
-queue).
+`configs/pm9g45_test_defconfig` builds **two** test-only dtbs from two
+dts sources, `board/ronetix/pm9g45/dts/pm9g45-modtest.dts` and
+`pm9g45-modtest-w1.dts` (see "modtest" above for why two — in short,
+`-w1` adds the `onewire` node to also exercise the SoM's onboard
+DS2401 chip, the other omits it; `modtest`'s own `onewire` check
+auto-adapts to whichever is flashed). Both dtbs land in `images/`
+(`BR2_LINUX_KERNEL_CUSTOM_DTS_PATH` takes a space-separated list, one
+`.dtb` per `.dts` — a stock Buildroot mechanism, not something specific
+to this tree); flash `-w1` for the onewire check, or the other to skip
+it.
+`pm9g45_test_defconfig` also autostarts modtest at boot and brings up
+eth0 via DHCP automatically — otherwise identical to
+`pm9g45_defconfig`. Each test dts's own header comment explains why it
+exists and how it relates to this board's dts-modifying patches above
+(both replicated into `pm9g45-modtest.dts` by hand, all three into
+`pm9g45-modtest-w1.dts`, since they're built standalone and never go
+through the patch queue).
 
 The SoM does have a real `mmc0` slot (`pm9g45.dts`'s `mmc0` node,
 already `status = "okay"` in production, 4-bit bus, `cd-gpios` on

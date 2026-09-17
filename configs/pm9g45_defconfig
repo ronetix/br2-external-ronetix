@@ -23,7 +23,11 @@ BR2_LINUX_KERNEL_CUSTOM_REPO_VERSION="c5ee3b5209256990ae272d97b69103e3289f2190"
 BR2_LINUX_KERNEL_DEFCONFIG="at91_dt"
 BR2_LINUX_KERNEL_DTS_SUPPORT=y
 BR2_LINUX_KERNEL_INTREE_DTS_NAME="microchip/pm9g45"
-BR2_LINUX_KERNEL_PATCH="$(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/pm9g45/patches/linux/0001-dts-microchip-pm9g45.dts-modify-partition-table.patch $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/common/patches/linux/0001-scripts-unifdef-avoid-constexpr-keyword.patch $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/pm9g45/patches/linux/0002-dts-microchip-pm9g45.dts-fix-led0-gpio-add-usb-vbus.patch"
+BR2_LINUX_KERNEL_PATCH="$(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/pm9g45/patches/linux/0001-dts-microchip-pm9g45.dts-modify-partition-table.patch $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/common/patches/linux/0001-scripts-unifdef-avoid-constexpr-keyword.patch $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/pm9g45/patches/linux/0002-dts-microchip-pm9g45.dts-fix-led0-gpio-add-usb-vbus.patch $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/pm9g45/patches/linux/0003-dts-microchip-pm9g45.dts-add-ds2401-onewire.patch"
+
+# 1-Wire (DS2401 serial-number chip on the SoM, PA31) -- see
+# board/ronetix/pm9g45/linux-w1.config's own comment.
+BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/pm9g45/linux-w1.config"
 
 # Filesystem
 BR2_TARGET_ROOTFS_UBIFS=y

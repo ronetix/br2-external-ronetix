@@ -1,0 +1,12 @@
+--- a/arch/arm/boot/dts/microchip/pm9g45.dts
++++ b/arch/arm/boot/dts/microchip/pm9g45.dts
+@@ -189,4 +189,9 @@
+ 			linux,code = <103>;
+ 		};
+ 	};
++
++	onewire {
++		compatible = "w1-gpio";
++		gpios = <&pioA 31 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
++	};
+ };

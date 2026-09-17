@@ -267,6 +267,56 @@ else
 	record mmc FAIL "$MMC_DEV missing"
 fi
 
+# ---------------------------------------------------------------- 1-Wire
+# Gated on the live devicetree, not a per-board .env flag: this checks
+# whether THIS boot's dts actually wired up a w1-gpio bus, which a
+# static flag can't track on its own if a board ever ships more than
+# one dts variant. Same "silently not checked at all, no TEST line"
+# convention as MMC above when there's nothing to check.
+#
+# /proc/device-tree is the live tree the kernel booted (modtest.sh's
+# own soc_name() already reads it for /proc/device-tree/model), and
+# still lists a disabled node's properties -- "status" is only
+# consulted by driver binding, not pruned from this tree. Searching
+# for any node's "compatible" file containing "w1-gpio" -- the exact
+# string the kernel's own w1-gpio.c driver matches on -- finds the
+# node regardless of what it's named (this repo happens to call it
+# "onewire", but nothing here should assume that). grep needs -a: a
+# devicetree property file is a NUL-terminated C string, and grep
+# treats anything containing a NUL as binary (silently never matching
+# with -l) unless told otherwise.
+w1_compat=$(grep -arl "w1-gpio" /proc/device-tree 2>/dev/null | grep '/compatible$' | head -n1)
+if [ -z "$w1_compat" ]; then
+	:
+else
+	w1_node=$(dirname "$w1_compat")
+	w1_status=""
+	[ -r "$w1_node/status" ] && w1_status=$(tr -d '\0' < "$w1_node/status" 2>/dev/null)
+	if [ -n "$w1_status" ] && [ "$w1_status" != "okay" ] && [ "$w1_status" != "ok" ]; then
+		:
+	elif [ -d /sys/bus/w1/devices ]; then
+		# w1_bus_masterN is the bus controller itself, not a slave
+		# device.
+		dev=""
+		for d in /sys/bus/w1/devices/*/; do
+			[ -d "$d" ] || continue
+			name=$(basename "$d")
+			case "$name" in
+				w1_bus_master*) continue ;;
+			esac
+			dev="$name"
+			break
+		done
+		if [ -n "$dev" ]; then
+			record onewire PASS "id=$dev"
+		else
+			record onewire FAIL "no device found on the bus"
+		fi
+	else
+		record onewire FAIL "/sys/bus/w1/devices missing (w1-gpio not bound?)"
+	fi
+fi
+
 # ---------------------------------------------------------------- Ethernet
 # Link up is not enough on its own - require an actual, DHCP-leased IPv4
 # address too. If none is already assigned (e.g. no networking service has

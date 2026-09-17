@@ -6,24 +6,33 @@
 # brings up eth0 via DHCP automatically. See board/ronetix/README.md's
 # "modtest" section for what each check does.
 #
-# Like sama5d3x_cm_test_defconfig, this boots a test-only dts
-# (board/ronetix/pm9g45/dts/pm9g45-modtest.dts): identical to the
-# production pm9g45.dts (both of its patches replicated verbatim in
-# the test dts itself, since it's built standalone and never goes
-# through the patch queue below) plus one addition, a pinctrl hog that
-# puts every BB9G45 J12/J13 pin package/modtest/files/config/
-# pm9g45.pairs exercises into plain GPIO with an active pull-up --
-# necessary, not optional, since this SoC's pinctrl driver ignores
-# gpiotest's own runtime pull request. See pm9g45-modtest.dts's own
-# header comment and board/ronetix/README.md for why pull-up, not
-# pull-down.
+# Like sama5d3x_cm_test_defconfig, this boots a test-only dts (not the
+# in-tree, patched pm9g45.dts). Two variants are built,
+# pm9g45-modtest.dtb and pm9g45-modtest-w1.dtb (see
+# BR2_LINUX_KERNEL_CUSTOM_DTS_PATH below -- Buildroot builds one .dtb
+# per space-separated .dts file, all landing in images/); flash -w1 to
+# also exercise the onewire test for the SoM's onboard DS2401 chip, or
+# the plain one to skip it (see pm9g45-modtest-w1.dts's own header for
+# why both exist) -- modtest's "onewire" check auto-adapts to whichever
+# is booted, no separate modtest config needed per variant. Both are
+# otherwise identical to the production
+# pm9g45.dts (its patches replicated verbatim in the test dts sources
+# themselves, since they're built standalone and never go through the
+# patch queue below) plus one addition, a pinctrl hog that puts every
+# BB9G45 J12/J13 pin package/modtest/files/config/pm9g45.pairs
+# exercises into plain GPIO with an active pull-up -- necessary, not
+# optional, since this SoC's pinctrl driver ignores gpiotest's own
+# runtime pull request. See pm9g45-modtest.dts's own header comment
+# and board/ronetix/README.md for why pull-up, not pull-down.
 #
-# The two pm9g45-dts-specific kernel patches below (partition table,
-# led0/usb-vbus) still apply during the build but have no effect on
-# what actually boots here, since pm9g45-modtest.dts is a standalone
-# file, not the in-tree pm9g45.dts they patch -- their changes are
-# replicated by hand into pm9g45-modtest.dts instead. Keep that
-# replication in sync if either patch changes.
+# The three pm9g45-dts-specific kernel patches below (partition table,
+# led0/usb-vbus, DS2401 onewire) still apply during the build but have
+# no effect on what actually boots here, since the test dts sources are
+# standalone files, not the in-tree pm9g45.dts they patch -- their
+# changes are replicated by hand into pm9g45-modtest.dts/
+# pm9g45-modtest-w1.dts instead (the latter also gets patch 0003's
+# onewire node; the former deliberately doesn't). Keep that replication
+# in sync if any of them changes.
 #
 # Keep this file's other production-relevant settings (architecture,
 # kernel/U-Boot/AT91Bootstrap3 pins and patches, filesystem) in sync
@@ -50,8 +59,14 @@ BR2_LINUX_KERNEL_CUSTOM_REPO_URL="https://github.com/linux4microchip/linux.git"
 BR2_LINUX_KERNEL_CUSTOM_REPO_VERSION="c5ee3b5209256990ae272d97b69103e3289f2190"
 BR2_LINUX_KERNEL_DEFCONFIG="at91_dt"
 BR2_LINUX_KERNEL_DTS_SUPPORT=y
-BR2_LINUX_KERNEL_CUSTOM_DTS_PATH="$(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/pm9g45/dts/pm9g45-modtest.dts"
-BR2_LINUX_KERNEL_PATCH="$(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/pm9g45/patches/linux/0001-dts-microchip-pm9g45.dts-modify-partition-table.patch $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/common/patches/linux/0001-scripts-unifdef-avoid-constexpr-keyword.patch $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/pm9g45/patches/linux/0002-dts-microchip-pm9g45.dts-fix-led0-gpio-add-usb-vbus.patch"
+BR2_LINUX_KERNEL_CUSTOM_DTS_PATH="$(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/pm9g45/dts/pm9g45-modtest.dts $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/pm9g45/dts/pm9g45-modtest-w1.dts"
+BR2_LINUX_KERNEL_PATCH="$(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/pm9g45/patches/linux/0001-dts-microchip-pm9g45.dts-modify-partition-table.patch $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/common/patches/linux/0001-scripts-unifdef-avoid-constexpr-keyword.patch $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/pm9g45/patches/linux/0002-dts-microchip-pm9g45.dts-fix-led0-gpio-add-usb-vbus.patch $(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/pm9g45/patches/linux/0003-dts-microchip-pm9g45.dts-add-ds2401-onewire.patch"
+
+# 1-Wire (DS2401 serial-number chip on the SoM, PA31) -- see
+# board/ronetix/pm9g45/linux-w1.config's own comment. Needed here too,
+# not just pm9g45_defconfig: this is a kernel .config setting, not a
+# dts one, and modtest's own onewire check (below) needs it.
+BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_RONETIX_PATH)/board/ronetix/pm9g45/linux-w1.config"
 
 # Filesystem
 BR2_TARGET_ROOTFS_UBIFS=y

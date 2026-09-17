@@ -1,47 +1,26 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * pm9g45-modtest.dts - Ronetix PM9G45 + BB9G45 production test device
- * tree.
+ * pm9g45-modtest-w1.dts - Ronetix PM9G45 + BB9G45 production test
+ * device tree, 1-Wire-enabled variant.
  *
- * Two variants of this file exist: this one (1-Wire test disabled) and
- * pm9g45-modtest-w1.dts (adds an "onewire" node to also test the SoM's
- * onboard DS2401 chip) -- see that file's own header for why. DS2401
- * looks like a standard, always-populated component on this SoM (it's
- * present, not marked DNP, in both pm9g45_Variant_Standard_Schematic.PDF
- * and pm9g45_Variant_Industrial_Schematic.PDF), but this split exists
- * in case a real unit turns out not to have it, or a station simply
- * doesn't need that check. modtest's own "onewire" check is gated on
- * the live devicetree, so it auto-adapts to whichever of the two is
- * booted; no separate modtest config needed per variant.
+ * Identical to pm9g45-modtest.dts (that file's own header has the
+ * full pinctrl-hog/pull-up rationale, not repeated here) plus one
+ * addition: an "onewire" node (compatible = "w1-gpio") for the SoM's
+ * onboard DS2401 serial-number chip on PA31, replicating production
+ * pm9g45.dts's patch 0003 -- pm9g45-modtest.dts deliberately omits it,
+ * replicating only patches 0001/0002.
  *
- * Identical to the production pm9g45.dts otherwise (two of its three
- * patches -- partition table, led0/usb-vbus fix -- replicated here
- * verbatim, since this file is built standalone via
- * BR2_LINUX_KERNEL_CUSTOM_DTS_PATH and never goes through
- * board/ronetix/pm9g45/patches/linux/ itself; patch 0003, DS2401
- * onewire, is deliberately not replicated here -- see
- * pm9g45-modtest-w1.dts for the variant that does) except for one
- * addition: a pinctrl hog that puts every BB9G45 J12/J13 pin exercised
- * by modtest's gpiotest loopback test into plain GPIO mode with an
- * actively enabled pull-UP.
+ * DS2401 looks like a standard, always-populated component on this
+ * SoM (it's present, not marked DNP, in both
+ * pm9g45_Variant_Standard_Schematic.PDF and
+ * pm9g45_Variant_Industrial_Schematic.PDF) -- use this variant to
+ * actually exercise/verify it. modtest's own "onewire" check is gated
+ * on the live devicetree, so it auto-adapts: PASS/FAIL here,
+ * silently-not-checked on pm9g45-modtest.dts -- no separate modtest
+ * config needed per variant.
  *
- * That hog is necessary -- not just a nice-to-have -- because
- * gpiotest's own runtime 'intbias=' request (via libgpiod's
- * GPIO_LINE_REQUEST bias flag) has no effect on this SoC's pinctrl
- * driver (atmel,at91rm9200-pinctrl / pinctrl-at91.c), exactly like
- * sama5d3x-cm's own gpiochip driver (see that board's
- * sama5d35ek-modtest.dts and board/ronetix/README.md) -- a static,
- * boot-time pinctrl hog is the only mechanism that actually applies a
- * bias here too.
- *
- * It's pull-UP, not pull-down like sama5d3x-cm's hog: the AT91SAM9G45
- * (Microchip datasheet doc6438E, Table 46-2 "DC Characteristics" and
- * section 29.4.1 "Pull-up Resistor Control") only implements a real
- * internal pull-up on general PIO lines (RPULLUP, typ. 75kOhm) --
- * there is no RPULLDOWN row in that table and no corresponding
- * pull-down section in chapter 29.4 at all: this chip has no internal
- * pull-down. pm9g45.pairs marks every row 'extbias=up' to match this
- * hog.
+ * Everything below (pinctrl hog, pull-up rationale) is identical to
+ * pm9g45-modtest.dts; see that file for the full explanation.
  *
  * NOT used by the production pm9g45_defconfig -- that one still boots
  * the in-tree, patched pm9g45.dts unmodified. This file is only pulled
@@ -53,13 +32,15 @@
 
 / {
 	/*
-	 * "modtest" in the model string is a quick way to confirm which
+	 * "modtest-w1" in the model string is a quick way to confirm which
 	 * dtb actually booted (`cat /sys/firmware/devicetree/base/model`)
-	 * before chasing a gpiotest failure as a hog-configuration bug.
-	 * compatible is left unchanged so nothing driver-visible depends
-	 * on it.
+	 * -- distinct from pm9g45-modtest.dts's "modtest" so the two are
+	 * never confused, e.g. before chasing a gpiotest failure as a
+	 * hog-configuration bug, or wondering why "onewire" isn't
+	 * reporting PASS/FAIL. compatible is left unchanged so nothing
+	 * driver-visible depends on it.
 	 */
-	model = "Ronetix pm9g45 (modtest)";
+	model = "Ronetix pm9g45 (modtest-w1)";
 	compatible = "ronetix,pm9g45", "atmel,at91sam9g45", "atmel,at91sam9";
 
 	chosen {
@@ -368,5 +349,10 @@
 			gpios = <&pioE 8 GPIO_ACTIVE_LOW>;
 			linux,code = <103>;
 		};
+	};
+
+	onewire {
+		compatible = "w1-gpio";
+		gpios = <&pioA 31 (GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN)>;
 	};
 };
