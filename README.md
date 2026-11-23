@@ -1,116 +1,320 @@
-# br2-external tree: RONETIX
+# RONETIX – Buildroot External Tree
 
-A `BR2_EXTERNAL` tree carrying Ronetix's board support for three AT91-family
-boards, layered on top of stock `linux4microchip/buildroot-mchp`
-(tested against tag `linux4microchip-2026.04`, Buildroot 2025.02.11):
+**Board support, custom configurations, and production test tools for Ronetix AT91-based System-on-Modules.**
 
-- **pm9g45** — Ronetix PM9G45 SoM.
-- **sama5d3x-cm** — Ronetix SAMA5D3X-CM SoM.
-- **sam9x5-cm** — Ronetix SAM9X5-CM SoM (AT91SAM9x5 family: G15/G25/G35/
-  X25/X35).
+This repository provides a `BR2_EXTERNAL` tree for integrating Ronetix hardware support into the official [Microchip Buildroot distribution](https://github.com/linux4microchip/buildroot-mchp).
 
-## Layout
+It currently supports three Ronetix AT91-family SoMs, using the stock `linux4microchip/buildroot-mchp` tree as its foundation.
 
+| Board | Description | Processor Family |
+|:---|:---|:---|
+| **PM9G45** | Ronetix PM9G45 System-on-Module | AT91SAM9G45 |
+| **SAMA5D3X-CM** | Ronetix SAMA5D3X-CM System-on-Module | SAMA5D3 |
+| **SAM9X5-CM** | Ronetix SAM9X5-CM System-on-Module | AT91SAM9X5 (G15/G25/G35/X25/X35) |
+
+### Compatibility
+
+| Component | Version |
+|:---|:---|
+| Microchip Buildroot | `linux4microchip-2026.04` |
+| Buildroot | `2025.02.11` |
+
+---
+
+## ✨ Features
+
+- **Three supported Ronetix SoMs** – dedicated Buildroot configurations for each platform.
+- **Upstream-based kernel support** – minimal, targeted patches on top of Microchip's Linux kernel.
+- **Upstream-based U-Boot support** – small, maintainable patches instead of a separate bootloader fork.
+- **Ronetix AT91Bootstrap** – direct integration of the Ronetix fork containing platform-specific low-level initialization.
+- **Production test images** – optional `modtest` package for automated hardware functional testing.
+- **Global Buildroot patches** – isolated fixes for packages provided by the stock Microchip distribution.
+
+---
+
+## 📁 Repository Structure
+
+```text
+br2-external-ronetix/
+│
+├── external.desc
+├── Config.in
+├── external.mk
+│
+├── configs/
+│   ├── pm9g45_defconfig
+│   ├── pm9g45_test_defconfig
+│   ├── sama5d3x_cm_defconfig
+│   ├── sama5d3x_cm_test_defconfig
+│   └── sam9x5_cm_defconfig
+│
+├── board/
+│   └── ronetix/
+│       ├── README.md
+│       │
+│       ├── common/
+│       │   └── patches/linux/
+│       │
+│       ├── pm9g45/
+│       │   └── patches/
+│       │       ├── linux/
+│       │       └── uboot/
+│       │
+│       ├── sama5d3x-cm/
+│       │   ├── patches/
+│       │   │   ├── linux/
+│       │   │   └── uboot/
+│       │   └── dts/
+│       │       └── sama5d35ek-modtest.dts
+│       │
+│       └── sam9x5-cm/
+│           └── patches/uboot/
+│
+├── global-patches/
+│   └── dtc/
+│       └── *.patch
+│
+└── package/
+    └── modtest/
+        ├── Config.in
+        ├── modtest.mk
+        └── files/
 ```
-external.desc               # declares this tree as "RONETIX"
-Config.in                   # sources package/modtest/Config.in
-external.mk                 # includes package/*/*.mk
-configs/
-  pm9g45_defconfig
-  pm9g45_test_defconfig      # pm9g45 + modtest, autostarted at boot --
-                              # see "modtest" in board/ronetix/README.md
-  sama5d3x_cm_defconfig
-  sama5d3x_cm_test_defconfig # sama5d3x-cm + modtest, separate test-only
-                              # dts -- see "modtest" in board/ronetix/README.md
-  sam9x5_cm_defconfig
-board/ronetix/
-  README.md                 # architecture notes / open items (read this)
-  common/patches/linux/*.patch   # patches shared by more than one board
-  pm9g45/patches/{linux,uboot}/*.patch
-  sama5d3x-cm/patches/{linux,uboot}/*.patch
-  sama5d3x-cm/dts/sama5d35ek-modtest.dts  # test-only dts, modtest image only
-  sam9x5-cm/patches/uboot/*.patch
-global-patches/
-  dtc/*.patch                # fixes for stock (non-Ronetix) packages --
-                              # see "Global patches" in board/ronetix/README.md
-package/modtest/
-  Config.in, modtest.mk      # production test tool (GPIO pair test +
-  files/                     # functional checks) -- see "modtest" in
-                              # board/ronetix/README.md
+
+### Directory Overview
+
+| Directory | Purpose |
+|:---|:---|
+| `configs/` | Buildroot defconfig files for production and test images |
+| `board/ronetix/` | Board-specific configurations, patches, and device trees |
+| `board/ronetix/common/` | Linux kernel patches shared between multiple boards |
+| `global-patches/` | Fixes for packages included in the stock Microchip Buildroot distribution |
+| `package/modtest/` | Ronetix production hardware test application |
+
+For additional technical information, patch provenance, and outstanding issues, see **[`board/ronetix/README.md`](board/ronetix/README.md)**.
+
+---
+
+## 🚀 Getting Started
+
+### 1. Clone the repositories
+
+Start with the tested Microchip Buildroot release:
+
+```bash
+git clone -b linux4microchip-2026.04 \
+    https://github.com/linux4microchip/buildroot-mchp.git
+
+git clone https://github.com/ronetix/br2-external-ronetix.git
 ```
 
-## Using it
+Expected directory layout:
 
+```text
+workspace/
+├── buildroot-mchp/
+└── br2-external-ronetix/
 ```
-git clone -b linux4microchip-2026.04 https://github.com/linux4microchip/buildroot-mchp.git
-git clone https://github.com/ronetix/br2-external-ronetix.git   # this tree
 
+### 2. Build a production image
+
+Select the desired board configuration, create an output directory, and start the build.
+
+**PM9G45**
+
+```bash
 cd buildroot-mchp
-make BR2_EXTERNAL=../br2-external-ronetix pm9g45_defconfig O=../output-pm9g45
+
+make BR2_EXTERNAL=../br2-external-ronetix \
+    pm9g45_defconfig O=../output-pm9g45
+
 make O=../output-pm9g45
+```
 
-# or, pm9g45's production test image (modtest, autostarted at boot --
-# see "modtest" in board/ronetix/README.md):
-make BR2_EXTERNAL=../br2-external-ronetix pm9g45_test_defconfig O=../output-pm9g45-test
-make O=../output-pm9g45-test
+**SAMA5D3X-CM**
 
-# or
-make BR2_EXTERNAL=../br2-external-ronetix sama5d3x_cm_defconfig O=../output-sama5d3x-cm
+```bash
+make BR2_EXTERNAL=../br2-external-ronetix \
+    sama5d3x_cm_defconfig O=../output-sama5d3x-cm
+
 make O=../output-sama5d3x-cm
+```
 
-# or, sama5d3x-cm's production test image (modtest, separate test-only
-# dts -- see "modtest" in board/ronetix/README.md):
-make BR2_EXTERNAL=../br2-external-ronetix sama5d3x_cm_test_defconfig O=../output-sama5d3x-cm-test
-make O=../output-sama5d3x-cm-test
+**SAM9X5-CM**
 
-# or
-make BR2_EXTERNAL=../br2-external-ronetix sam9x5_cm_defconfig O=../output-sam9x5-cm
+```bash
+make BR2_EXTERNAL=../br2-external-ronetix \
+    sam9x5_cm_defconfig O=../output-sam9x5-cm
+
 make O=../output-sam9x5-cm
 ```
 
-(`buildroot-external-microchip`, Microchip's own companion br2-external
-tree, is optional — only needed if you want its extra multimedia/crypto/
-wireless-kit packages. Buildroot supports stacking more than one
-`BR2_EXTERNAL` tree with `BR2_EXTERNAL=path1:path2` if you want both.)
+### 3. Build production test images
 
-## Design: patch queue vs. fork reference
+Two configurations include the Ronetix `modtest` package, which provides hardware functional tests and automatic execution at boot.
 
-This tree deliberately treats the three sources differently, matching how
-much genuinely board-specific code each one carries:
+**PM9G45 – Production Test Image**
 
-- **Linux kernel** — small, targeted patches (NAND ECC strength, one dtsi
-  partition layout) applied on top of stock `linux4microchip/linux`.
-- **U-Boot** — small, targeted patches (2-4 lines each: boot
-  command/args, PMECC cap, PHY/MAC options) applied on top of stock
-  `linux4sam/u-boot-at91`, **not** a fork. Verified: `ronetix/u-boot`'s
-  `u-boot-2024.07-mchp` branch is exactly 3 commits ahead of
-  `linux4sam/u-boot-at91`'s `u-boot-2024.07-mchp` — those 3 commits are
-  the 3 patches carried here.
-- **AT91Bootstrap3** — the Ronetix fork is referenced directly
-  (`https://github.com/ronetix/at91bootstrap.git`, branch
-  `at91bootstrap-3.10.4_rnx`), not patched. This is where the real
-  low-level SoM bring-up (DDR/NAND timing, pin muxing) lives, and it
-  doesn't cleanly decompose into small patches against a public upstream
-  base the way the kernel/U-Boot deltas do.
+```bash
+make BR2_EXTERNAL=../br2-external-ronetix \
+    pm9g45_test_defconfig O=../output-pm9g45-test
 
-This keeps the kernel and U-Boot deltas small, reviewable, and easy to
-rebase forward onto a newer upstream tag; it keeps AT91Bootstrap where the
-real bring-up work already lives instead of trying to force it into the
-same shape.
+make O=../output-pm9g45-test
+```
 
-## Global patches for stock packages
+**SAMA5D3X-CM – Production Test Image**
 
-Each board's defconfig sets `BR2_GLOBAL_PATCH_DIR="$(BR2_EXTERNAL_RONETIX_PATH)/global-patches"`.
-This is a stock Buildroot mechanism (`BR2_GLOBAL_PATCH_DIR` in the top
-menu's Build options) for patching packages that ship with
-`linux4microchip/buildroot-mchp` itself -- not a Ronetix board or a
-custom-fetched kernel/U-Boot/AT91Bootstrap -- when you can't commit
-directly to that upstream repo. Buildroot looks for
-`<dir>/<pkgname>/<pkgversion>/*.patch` first, falling back to
-`<dir>/<pkgname>/*.patch`, and applies them after the package's own
-in-tree patches. See `global-patches/dtc/` and `board/ronetix/README.md`
-for the one patch currently carried this way.
+```bash
+make BR2_EXTERNAL=../br2-external-ronetix \
+    sama5d3x_cm_test_defconfig O=../output-sama5d3x-cm-test
 
-See `board/ronetix/README.md` for per-board detail, provenance of every
-patch, and open items that need your team's confirmation before this is
-production-ready.
+make O=../output-sama5d3x-cm-test
+```
+
+The SAMA5D3X-CM test image additionally uses a dedicated test-only device tree.
+
+> **Note:** The `modtest` application is automatically started during boot. See the [modtest documentation](board/ronetix/README.md#modtest) for details.
+
+---
+
+## 🏗️ Design Philosophy
+
+### Upstream First – Minimal Patches, Maximum Maintainability
+
+The repository deliberately uses different integration strategies for the Linux kernel, U-Boot, and AT91Bootstrap3.
+
+The goal is to keep board-specific changes small, transparent, and easy to maintain across upstream releases.
+
+#### Linux Kernel
+
+Based on the stock Microchip Linux kernel:
+
+`linux4microchip/linux`
+
+Only a small number of targeted patches are maintained, covering board-specific requirements such as:
+
+- NAND ECC configuration.
+- Device tree partition layouts.
+
+#### U-Boot
+
+Based on the stock AT91 U-Boot repository:
+
+`linux4sam/u-boot-at91`
+
+Ronetix-specific changes are maintained as small patches rather than a separate fork.
+
+Typical changes include:
+
+- Boot commands and boot arguments.
+- PMECC configuration.
+- Ethernet PHY and MAC options.
+
+**Why patches instead of a fork?**
+
+A comparison of the `u-boot-2024.07-mchp` branches confirmed that the Ronetix fork contains exactly three additional commits compared with the corresponding upstream branch.
+
+These three commits are represented by the patches maintained in this repository.
+
+This approach makes future U-Boot upgrades easier and avoids maintaining an unnecessary long-term fork.
+
+#### AT91Bootstrap3
+
+Unlike the kernel and U-Boot, AT91Bootstrap3 is referenced directly from the Ronetix repository:
+
+- Repository: `https://github.com/ronetix/at91bootstrap.git`
+- Branch: `at91bootstrap-3.10.4_rnx`
+
+The Ronetix fork contains the actual low-level hardware initialization required by the SoMs, including:
+
+- DDR initialization and timing.
+- NAND initialization and timing.
+- Pin multiplexing.
+- Platform-specific hardware bring-up.
+
+These changes are fundamental to the hardware platform and do not lend themselves to the same small-patch approach used for Linux and U-Boot.
+
+**Summary**
+
+| Component | Integration Strategy | Rationale |
+|:---|:---|:---|
+| Linux | Small patch series | Minimal board-specific changes |
+| U-Boot | Small patch series | Avoid maintaining a separate fork |
+| AT91Bootstrap3 | Ronetix Git fork | Contains fundamental low-level hardware initialization |
+
+---
+
+## 🔧 Global Patches
+
+Buildroot provides the `BR2_GLOBAL_PATCH_DIR` mechanism to apply additional patches to packages included in the Buildroot distribution.
+
+Each Ronetix defconfig sets:
+
+```makefile
+BR2_GLOBAL_PATCH_DIR="$(BR2_EXTERNAL_RONETIX_PATH)/global-patches"
+```
+
+This mechanism is used for modifications to stock packages provided by `linux4microchip/buildroot-mchp` that cannot be committed directly to the upstream repository.
+
+Buildroot searches for patches in the following order:
+
+```text
+<global-patch-dir>/<package>/<package-version>/*.patch
+<global-patch-dir>/<package>/*.patch
+```
+
+These patches are applied after the package's own in-tree patches.
+
+The current repository includes a patch for `dtc` (Device Tree Compiler).
+
+See [`global-patches/`](global-patches/) and the [technical documentation](board/ronetix/README.md#global-patches) for details.
+
+---
+
+## 📦 Microchip External Packages (Optional)
+
+Microchip maintains its own companion external tree:
+
+`buildroot-external-microchip`
+
+This repository is **not required** for the standard Ronetix board configurations.
+
+It is only needed if you want additional Microchip packages, such as multimedia, cryptography, or wireless-kit components.
+
+Buildroot supports multiple external trees simultaneously:
+
+```bash
+make BR2_EXTERNAL=../buildroot-external-microchip:../br2-external-ronetix \
+    pm9g45_defconfig O=../output-pm9g45
+```
+
+This allows Ronetix board support and Microchip's additional packages to coexist without merging their repositories.
+
+---
+
+## 📚 Further Documentation
+
+The following document contains additional implementation details:
+
+**[`board/ronetix/README.md`](board/ronetix/README.md)**
+
+It covers:
+
+- Per-board hardware and software details.
+- Kernel and U-Boot patch descriptions.
+- Patch provenance and upstream references.
+- AT91Bootstrap integration.
+- Production test application (`modtest`).
+- Global patches.
+- Known limitations and outstanding items.
+
+> **Production readiness:** The technical documentation also identifies open items requiring confirmation by the Ronetix engineering team before the configurations can be considered production-ready.
+
+---
+
+## 🏢 About Ronetix
+
+**Ronetix GmbH** develops embedded hardware and software solutions, including ARM-based System-on-Modules, development platforms, and embedded debugging and programming tools.
+
+🌐 [www.ronetix.at](https://ronetix.at)
+
