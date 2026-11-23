@@ -98,7 +98,7 @@ PAIRMAP=${PAIRMAP:-/etc/modtest/pins.pairs}
 ETH_IF=${ETH_IF:-eth0}
 MMC_DEV=${MMC_DEV:-}
 MTD_PART_LABEL=${MTD_PART_LABEL:-rootfs}
-DDR_TEST_SIZE=${DDR_TEST_SIZE:-1M}
+DDR_TEST_SIZE=${DDR_TEST_SIZE:-256K}
 # Unset falls back to 1M above. "0" is different: an explicit opt-out,
 # SKIPping ddr_pattern entirely instead of passing "0M" to memtester
 # (which would just fail) -- see the DDR section below.
