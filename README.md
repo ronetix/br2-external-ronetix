@@ -36,6 +36,7 @@ It currently supports three Ronetix AT91-family SoMs, using the stock `linux4mic
 
 ```text
 br2-external-ronetix/
+├── build.sh
 │
 ├── external.desc
 ├── Config.in
@@ -174,6 +175,82 @@ make O=../output-sama5d3x-cm-test
 The SAMA5D3X-CM test image additionally uses a dedicated test-only device tree.
 
 > **Note:** The `modtest` application is automatically started during boot. See the [modtest documentation](board/ronetix/README.md#modtest) for details.
+
+
+### 4. Build using `build.sh`
+
+The external tree includes a helper script that simplifies the build commands.
+It automatically locates the Buildroot source tree, selects the output directory
+based on the defconfig name, and initializes the configuration on the first run.
+
+The script expects the following directory layout:
+
+```text
+workspace/
+├── buildroot-mchp/             # Microchip Buildroot source tree
+├── br2-external-ronetix/       # This repository
+│   ├── build.sh
+│   ├── Config.in
+│   ├── external.desc
+│   ├── external.mk
+│   ├── configs/
+│   └── board/
+└── output-*/                   # Generated build output directories
+```
+
+Run the default configuration (`sama5d3x_cm_test_defconfig`):
+
+```bash
+./build.sh
+```
+
+Or specify another defconfig:
+
+```bash
+./build.sh pm9g45_defconfig
+./build.sh sama5d3x_cm_defconfig
+./build.sh sam9x5_cm_defconfig
+```
+
+The output directory is generated automatically by removing the `_defconfig`
+suffix and prefixing the remaining name with `output-`. For example:
+
+| Defconfig | Output directory |
+|:---|:---|
+| `pm9g45_defconfig` | `output-pm9g45` |
+| `sama5d3x_cm_defconfig` | `output-sama5d3x_cm` |
+| `sama5d3x_cm_test_defconfig` | `output-sama5d3x_cm_test` |
+| `sam9x5_cm_defconfig` | `output-sam9x5_cm` |
+
+You can also pass a Buildroot make target after the defconfig name:
+
+```bash
+# Build the complete image
+./build.sh sama5d3x_cm_test_defconfig
+
+# Rebuild the Linux kernel
+./build.sh sama5d3x_cm_test_defconfig linux-rebuild
+
+# Rebuild BusyBox
+./build.sh sama5d3x_cm_test_defconfig busybox-rebuild
+```
+
+If no defconfig argument is supplied, the script uses
+`sama5d3x_cm_test_defconfig` by default.
+
+**Configuration handling:** On the first run, the script applies the selected
+defconfig. On subsequent runs, it reuses the existing output directory's
+`.config` and does not overwrite local configuration changes. If you modify a
+defconfig and want to apply it again, explicitly run the corresponding
+defconfig target, for example:
+
+```bash
+make -C ../buildroot O=../output-sama5d3x_cm_test \
+    sama5d3x_cm_test_defconfig
+```
+
+The script can be invoked from any current working directory; its paths are
+resolved relative to the location of `build.sh`.
 
 ---
 
