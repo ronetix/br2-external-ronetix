@@ -347,50 +347,64 @@ eth_is_link_local() {
 	esac
 }
 
-if [ -d "/sys/class/net/$ETH_IF" ]; then
-	ip link set "$ETH_IF" up 2>/dev/null
-	waited=0
-	while :; do
-		link=$(cat "/sys/class/net/$ETH_IF/operstate" 2>/dev/null)
-		[ "$link" = up ] && break
-		[ "$waited" -ge "$ETH_LINK_TIMEOUT" ] && break
-		sleep 1
-		waited=$((waited + 1))
-	done
-	speed=""
-	if command -v ethtool >/dev/null 2>&1; then
-		speed=$(ethtool "$ETH_IF" 2>/dev/null | awk '/Speed/{print $2}')
-	fi
+test_eth() {
+	if [ -d "/sys/class/net/$ETH_IF" ]; then
+		ip link set "$ETH_IF" up 2>/dev/null
+		waited=0
+		while :; do
+			link=$(cat "/sys/class/net/$ETH_IF/operstate" 2>/dev/null)
+			[ "$link" = up ] && break
+			[ "$waited" -ge "$ETH_LINK_TIMEOUT" ] && break
+			sleep 1
+			waited=$((waited + 1))
+		done
+		speed=""
+		if command -v ethtool >/dev/null 2>&1; then
+			speed=$(ethtool "$ETH_IF" 2>/dev/null | awk '/Speed/{print $2}')
+		fi
 
-	ip4=""
-	ip4_src="none"
-	if [ "$link" = up ]; then
-		ip4=$(eth_ipv4 "$ETH_IF")
-		[ -n "$ip4" ] && ip4_src="existing"
-		# Retry via DHCP if there's no address yet, or what's there is only
-		# the zeroconf fallback - a real lease should replace it.
-		if { [ -z "$ip4" ] || eth_is_link_local "$ip4"; } && command -v udhcpc >/dev/null 2>&1; then
-			udhcpc -i "$ETH_IF" -n -q -t "$ETH_DHCP_RETRIES" -T "$ETH_DHCP_TIMEOUT" >/dev/null 2>&1
-			new_ip4=$(eth_ipv4 "$ETH_IF")
-			if [ -n "$new_ip4" ]; then
-				ip4="$new_ip4"
-				ip4_src="dhcp"
+		ip4=""
+		ip4_src="none"
+		if [ "$link" = up ]; then
+			ip4=$(eth_ipv4 "$ETH_IF")
+			[ -n "$ip4" ] && ip4_src="existing"
+			# Retry via DHCP if there's no address yet, or what's there is only
+			# the zeroconf fallback - a real lease should replace it.
+			if { [ -z "$ip4" ] || eth_is_link_local "$ip4"; } && command -v udhcpc >/dev/null 2>&1; then
+				udhcpc -i "$ETH_IF" -n -q -t "$ETH_DHCP_RETRIES" -T "$ETH_DHCP_TIMEOUT" >/dev/null 2>&1
+				new_ip4=$(eth_ipv4 "$ETH_IF")
+				if [ -n "$new_ip4" ]; then
+					ip4="$new_ip4"
+					ip4_src="dhcp"
+				fi
 			fi
 		fi
-	fi
 
-	if [ "$link" = up ] && [ -n "$ip4" ] && eth_is_link_local "$ip4"; then
-		record eth FAIL "link=up no DHCP lease, link-local ip=$ip4"
-	elif [ "$link" = up ] && [ -n "$ip4" ]; then
-		record eth PASS "speed=${speed:-?} ip=$ip4 src=$ip4_src"
-	elif [ "$link" = up ]; then
-		record eth FAIL "link=up no IP address"
+		if [ "$link" = up ] && [ -n "$ip4" ] && eth_is_link_local "$ip4"; then
+			record eth FAIL "link=up no DHCP lease, link-local ip=$ip4"
+		elif [ "$link" = up ] && [ -n "$ip4" ]; then
+			record eth PASS "speed=${speed:-?} ip=$ip4 src=$ip4_src"
+		elif [ "$link" = up ]; then
+			record eth FAIL "link=up no IP address"
+		else
+			record eth FAIL "link=$link"
+		fi
 	else
-		record eth FAIL "link=$link"
+		record eth FAIL "$ETH_IF missing"
 	fi
+}
+
+# check for a  /etc/network/interfaces entry for eth0, which is the
+# only interface on any of these three boards. If present, run the test
+# against it; if not, skip it. This avoids a false FAIL on a board that
+# has no eth0 at all (e.g. a production test carrier that doesn't wire it up) 
+# or a board that has eth0 but is configured to not bring it up at boot.
+if grep -qE '^[[:space:]]*iface[[:space:]]+eth0([[:space:]]|$)' /etc/network/interfaces; then
+	test_eth
 else
-	record eth FAIL "$ETH_IF missing"
+	record eth SKIP "eth0 not configured in /etc/network/interfaces"	
 fi
+
 
 # ---------------------------------------------------------------- I2C
 # Bus-presence check: a bus is OK as soon as ONE device answers on it -
