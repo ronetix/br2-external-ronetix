@@ -557,7 +557,19 @@ show_result() {
 	fi
 }
 
+# A full run with no FAIL (SKIP is not a failure, same as RESULT PASS)
+# leaves a persistent marker that stops S99modtest running the test at
+# later boots. Never removed on a later FAIL: a customer running modtest
+# by hand without the test fixture must not re-enable the boot-time test.
+# The sync matters, the board may be powered off right after RESULT.
+DONE_FILE=/root/modtest.done
+
 if [ "$fails" -eq 0 ]; then
+	if touch "$DONE_FILE" && sync; then
+		:
+	else
+		echo "WARNING cannot create $DONE_FILE, modtest will run again at next boot"
+	fi
 	show_result PASS
 	finish 0
 fi

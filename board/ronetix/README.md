@@ -73,6 +73,11 @@ Two pieces, both installed to the target's `/usr/bin/`:
   editing the `.env` and rebooting; aborting this way exits 2, distinct
   from `0`/`1` for pass/fail. Without `-t` (the default for a manual or
   scripted run) it never waits. `S99modtest` passes `-t` at boot.
+  When a full run ends with `RESULT PASS`, modtest creates
+  `/root/modtest.done`; `S99modtest` then skips the test at every later
+  boot. SKIPped checks don't block this, and `-g` alone never creates
+  it. A later failing run doesn't remove it: `rm /root/modtest.done` to
+  test again at the next boot.
   - **cpu** — sanity-checks `/proc/cpuinfo` against the expected core.
   - **ddr_size**/**ddr_pattern** — reports `/proc/meminfo`'s size and
     runs `memtester` (if installed) over a configurable chunk

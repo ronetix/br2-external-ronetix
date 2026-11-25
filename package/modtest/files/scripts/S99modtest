@@ -1,12 +1,17 @@
 #!/bin/sh
 #
-# Run modtest once at boot and log the result.
+# Run modtest at boot and log the result, until it has passed once:
+# modtest creates $DONE when all tests are OK, and from then on this
+# script does nothing. Remove $DONE to test the board again at next boot.
 #
 
 LOG=/var/log/modtest.log
+DONE=/root/modtest.done
 
 case "$1" in
 	start)
+		[ -e "$DONE" ] && exit 0
+
 		echo "Running modtest, see $LOG"
 		# modtest.sh auto-detects color from "is stdout a real tty",
 		# which is false once piped through tee below -- force it on
