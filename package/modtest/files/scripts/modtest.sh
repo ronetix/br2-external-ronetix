@@ -561,16 +561,17 @@ show_result() {
 # leaves a persistent marker that stops S99modtest running the test at
 # later boots. Never removed on a later FAIL: a customer running modtest
 # by hand without the test fixture must not re-enable the boot-time test.
-# The sync matters, the board may be powered off right after RESULT.
+# The sync matters, the board may be powered off right after the messages.
 DONE_FILE=/root/modtest.done
 
 if [ "$fails" -eq 0 ]; then
+	show_result PASS
 	if touch "$DONE_FILE" && sync; then
-		:
+		echo "INFO $DONE_FILE created, modtest will not run at next boot"
+		echo "INFO to enable modtest at next boot: rm $DONE_FILE"
 	else
 		echo "WARNING cannot create $DONE_FILE, modtest will run again at next boot"
 	fi
-	show_result PASS
 	finish 0
 fi
 show_result FAIL
